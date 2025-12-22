@@ -1,7 +1,8 @@
-# Use Node.js as the base image
+# Use Node.js 18 on Bullseye (Debian) for maximum compatibility with Python libs
 FROM node:18-bullseye
 
-# Install Python, LibreOffice, and PDF dependencies
+# 1. Install System Dependencies
+# These are required for Word/PPT conversion, PDF-to-Image, and OCR
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -11,24 +12,32 @@ RUN apt-get update && apt-get install -y \
     libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
+# 2. Set the working directory
 WORKDIR /app
 
-# Install Node dependencies
+# 3. Handle Node.js Dependencies
+# Ensure package.json exists before this step (Run 'npm init -y' locally)
 COPY package*.json ./
 RUN npm install
 
-# Install Python dependencies
+# 4. Handle Python Dependencies
+# Ensure requirements.txt exists in your root folder
 COPY requirements.txt ./
-RUN pip3 install -r requirements.txt --break-system-packages
+RUN pip3 install --no-cache-dir -r requirements.txt --break-system-packages
 
-# Copy the rest of your code
+# 5. Copy Application Source
 COPY . .
 
-# Set environment variables
+# 6. Final Setup
+# Ensure the uploads folder exists for file processing
+RUN mkdir -p uploads outputs
+
+# Set environment variables for production
 ENV PORT=3000
 ENV PYTHONUTF8=1
+ENV NODE_ENV=production
 
 EXPOSE 3000
 
-# Start the server
+# Start the Node.js server
 CMD ["node", "server.js"]
