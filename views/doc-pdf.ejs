@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OmniGrid NX | Word to PDF Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --nx-blue: #2563eb; --nx-bg: #ffffff; --nx-border: #f1f5f9; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--nx-bg); color: #0f172a; overflow-x: hidden; }
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(circle at 50% 50%, #eff6ff 0%, #ffffff 100%); }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .animate-hero { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .animate-card { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both; }
+        
+        /* --- GOOGLE STYLE LINE LOADER --- */
+        .google-loader {
+            height: 4px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            background-color: #e2e8f0;
+            border-radius: 20px;
+        }
+        .google-loader:before {
+            content: "";
+            position: absolute;
+            background-color: var(--nx-blue);
+            top: 0;
+            left: 0;
+            bottom: 0;
+            will-change: left, right;
+            animation: google-line 2.1s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
+        }
+        .google-loader:after {
+            content: "";
+            position: absolute;
+            background-color: var(--nx-blue);
+            top: 0;
+            left: 0;
+            bottom: 0;
+            will-change: left, right;
+            animation: google-line-short 2.1s cubic-bezier(0.165, 0.84, 0.44, 1) infinite;
+            animation-delay: 1.15s;
+        }
+
+        @keyframes google-line {
+            0% { left: -35%; right: 100%; }
+            60% { left: 100%; right: -90%; }
+            100% { left: 100%; right: -90%; }
+        }
+        @keyframes google-line-short {
+            0% { left: -200%; right: 100%; }
+            60% { left: 107%; right: -8%; }
+            100% { left: 107%; right: -8%; }
+        }
+        /* --- END LOADER --- */
+
+        .glass-feature { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(241, 245, 249, 1); transition: all 0.3s ease; }
+        .glass-feature:hover { background: white; transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.1); }
+        .shape { position: absolute; background: var(--nx-blue); filter: blur(100px); opacity: 0.05; z-index: -1; border-radius: 50%; animation: float 25s infinite alternate; }
+        @keyframes float { 0% { transform: translate(0, 0) rotate(0deg); } 100% { transform: translate(150px, 100px) rotate(15deg); } }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="bg-canvas">
+        <div class="shape w-[500px] h-[500px] top-[-100px] left-[-100px]"></div>
+        <div class="shape w-[400px] h-[400px] bottom-[-50px] right-[-50px]" style="animation-delay: -7s; background: #0ea5e9;"></div>
+    </div>
+
+    <nav class="px-6 py-6 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-xl sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center rotate-12 shadow-lg">
+                <i class="fas fa-file-word text-white text-xs"></i>
+            </div>
+            <span class="text-xl font-black tracking-tighter">OMNIGrid <span class="text-blue-600 italic text-sm">PRO</span></span>
+        </div>
+        <button class="bg-slate-900 text-white px-6 py-2.5 rounded-full text-[10px] font-bold tracking-widest uppercase hover:bg-blue-600 transition shadow-xl">
+            DOC ENGINE
+        </button>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-12 lg:py-20">
+        <div class="flex flex-col lg:flex-row items-center gap-16">
+            
+            <div class="lg:w-1/2 animate-hero">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 mb-6">
+                    <span class="text-[10px] font-bold text-blue-700 uppercase tracking-widest">Enterprise Word Processing</span>
+                </div>
+                
+                <h1 class="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8">
+                    Word to <span class="text-blue-600">PDF</span> <br>Pro Conversion.
+                </h1>
+                
+                <p class="text-lg text-slate-500 font-medium mb-10 max-w-lg leading-relaxed">
+                    Transform your Microsoft Word documents into pixel-perfect PDF files. We preserve your margins, custom fonts, and intricate tables with enterprise-grade accuracy.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center shrink-0">
+                            <i class="fas fa-file-contract text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-sm">Layout Integrity</h4>
+                            <p class="text-xs text-slate-400 mt-1">Margins and spacing stay fixed.</p>
+                        </div>
+                    </div>
+                    <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-sky-600/10 flex items-center justify-center shrink-0">
+                            <i class="fas fa-font text-sky-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-sm">Font Embedding</h4>
+                            <p class="text-xs text-slate-400 mt-1">Custom typography preserved.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:w-1/2 w-full animate-card">
+                <div class="bg-white p-3 rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(37,99,235,0.15)] border border-slate-50 relative overflow-hidden">
+                    <div id="drop-zone" class="bg-slate-50 rounded-[2.6rem] py-20 px-10 text-center border-2 border-dashed border-slate-200 transition-all cursor-pointer hover:border-blue-400 group">
+                        <input type="file" id="fileInput" class="hidden" accept=".doc, .docx">
+                        
+                        <div id="idle-ui">
+                            <div class="relative w-24 h-24 mx-auto mb-8">
+                                <div class="absolute inset-0 bg-blue-600 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                                <div class="relative w-full h-full bg-white rounded-3xl shadow-sm flex items-center justify-center border border-slate-100">
+                                    <i class="fas fa-file-word text-blue-600 text-3xl"></i>
+                                </div>
+                            </div>
+                            <h3 class="text-2xl font-black mb-2">Upload Document</h3>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-10">Supports .docx and .doc</p>
+                            
+                            <button onclick="document.getElementById('fileInput').click()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] shadow-xl hover:bg-blue-600 transition-all">
+                                SELECT WORD FILE
+                            </button>
+                        </div>
+
+                        <div id="processing-ui" class="hidden flex flex-col items-center justify-center py-10">
+                            <div class="w-full mb-10">
+                                <div class="google-loader"></div>
+                            </div>
+                            <h3 id="status-text" class="text-2xl font-black text-slate-800 mb-2">Processing Document</h3>
+                            <p class="text-sm font-medium text-slate-400">Initializing Word Interface...</p>
+                        </div>
+
+                        <div id="complete-ui" class="hidden">
+                            <div class="w-24 h-24 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-emerald-100 scale-110">
+                                <i class="fas fa-check text-3xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-black mb-1">Document Ready!</h3>
+                            <p class="text-xs font-bold text-slate-400 mb-10 uppercase tracking-widest">PDF Generated Successfully</p>
+                            
+                            <div class="space-y-3">
+                                <button id="downloadBtn" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-[10px] tracking-[0.2em] shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all">
+                                    <i class="fas fa-download mr-2"></i> DOWNLOAD PDF
+                                </button>
+                                <button onclick="location.reload()" class="text-xs font-bold text-slate-400 hover:text-slate-900 transition underline underline-offset-4">
+                                    Convert another file
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const socket = io();
+        let socketId = "";
+
+        socket.on('connect', () => { 
+            socketId = socket.id; 
+            console.log("Socket Connected: ", socketId);
+        });
+
+        socket.on('conversion-status', (msg) => {
+            const statusSubtext = document.querySelector('#processing-ui p');
+            if(statusSubtext) statusSubtext.innerText = msg;
+        });
+
+        const fileInput = document.getElementById('fileInput');
+        fileInput.onchange = (e) => {
+            if(e.target.files.length) handleConversion(e.target.files[0]);
+        };
+
+        async function handleConversion(file) {
+            document.getElementById('idle-ui').classList.add('hidden');
+            document.getElementById('processing-ui').classList.remove('hidden');
+            
+            const formData = new FormData();
+            formData.append("word", file);
+            formData.append("socketId", socketId);
+
+            try {
+                const response = await fetch("/word-to-pdf-convert", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error("Conversion failed on server");
+
+                const result = await response.json();
+                
+                if (!result.downloadUrl) {
+                    throw new Error("Invalid server response format");
+                }
+                
+                // Keep the loader visible for a split second for smooth transition
+                setTimeout(() => {
+                    document.getElementById('processing-ui').classList.add('hidden');
+                    document.getElementById('complete-ui').classList.remove('hidden');
+                    document.getElementById('downloadBtn').onclick = () => {
+                        window.location.href = result.downloadUrl;
+                    };
+                }, 800);
+
+            } catch (err) {
+                console.error("Frontend Error:", err);
+                alert("Critical Error: " + err.message);
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

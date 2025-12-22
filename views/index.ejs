@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>OmniGrid NX | World's #1 Secure PDF & Document Processor</title>
+    <meta name="description" content="OmniGrid NX is the global leader in secure, AI-powered document conversion.">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --nx-blue: #2563eb; --nx-bg: #ffffff; --nx-border: #f1f5f9; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--nx-bg); color: #0f172a; }
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(circle at 50% 50%, #f8faff 0%, #ffffff 100%); }
+        
+        #main-nav { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        #main-nav.scrolled { padding-top: 0.6rem; padding-bottom: 0.6rem; background-color: rgba(255, 255, 255, 0.75); backdrop-filter: blur(20px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03); }
+        
+        .dropdown-menu { display: none; animation: slideUp 0.2s ease-out forwards; z-index: 100; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .show { display: block !important; }
+
+        /* Enhanced Interactive Card Styling */
+        .tool-card { 
+            opacity: 0;
+            border: 1.5px solid var(--nx-border); 
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            background: white; 
+        }
+        .tool-card.revealed { opacity: 1; transform: translateY(0) scale(1); animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        
+        @keyframes popIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .tool-card:hover { 
+            transform: translateY(-12px); 
+            border-color: transparent;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+        }
+        
+        .tool-card:hover .icon-box { transform: scale(1.1) rotate(5deg); }
+
+        .filter-pill { transition: all 0.3s ease; border: 1.5px solid #f1f5f9; cursor: pointer; white-space: nowrap; }
+        .filter-pill.active { background-color: #000; color: #fff; border-color: #000; transform: scale(1.05); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="bg-canvas"></div>
+
+    <header class="fixed top-0 left-0 w-full z-[100]">
+        <div class="bg-slate-900 text-[10px] py-2 px-6 flex justify-between items-center text-white/60 font-bold tracking-widest">
+            <div class="flex items-center gap-4">
+                <span class="flex items-center gap-1.5"><i class="fas fa-shield-check text-emerald-500"></i> <span data-i18n="iso">ISO 27001 ENCRYPTED</span></span>
+            </div>
+            <div class="flex items-center gap-5">
+                <div class="relative">
+                    <button onclick="toggleDropdown('lang-dropdown')" class="hover:text-white flex items-center gap-1 uppercase">
+                        <i class="fas fa-globe text-[9px]"></i> <span id="current-lang">ENGLISH</span> <i class="fas fa-chevron-down text-[6px]"></i>
+                    </button>
+                    <div id="lang-dropdown" class="dropdown-menu absolute right-0 mt-2 w-40 bg-slate-800 rounded-lg p-2 border border-white/10 max-h-60 overflow-y-auto no-scrollbar shadow-2xl">
+                        <button onclick="changeLanguage('en')" class="w-full text-left p-2 hover:bg-white/5 rounded text-white text-[10px]">English</button>
+                        <button onclick="changeLanguage('hi')" class="w-full text-left p-2 hover:bg-white/5 rounded text-white text-[10px]">हिन्दी (Hindi)</button>
+                        <button onclick="changeLanguage('kn')" class="w-full text-left p-2 hover:bg-white/5 rounded text-white text-[10px]">ಕನ್ನಡ (Kannada)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <nav id="main-nav" class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white/95">
+            <div class="flex items-center gap-8">
+                <a href="/" class="flex items-center gap-3 group">
+                    <div class="bg-blue-600 w-10 h-10 rounded-xl flex items-center justify-center rotate-12 shadow-lg shadow-blue-200"><i class="fas fa-bolt text-white"></i></div>
+                    <div class="flex flex-col">
+                        <span class="text-2xl font-black tracking-tighter leading-none">OMNIGrid</span>
+                        <span class="text-[9px] font-bold text-blue-600 tracking-[0.2em] uppercase" data-i18n="logo-sub">NX Intelligence</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center bg-slate-50 px-4 py-2.5 rounded-full border border-slate-100 focus-within:border-blue-500 transition-all">
+                    <i class="fas fa-search text-slate-300 text-xs mr-3"></i>
+                    <input type="text" id="tool-search" data-i18n-placeholder="search-ph" placeholder="Search modules..." class="bg-transparent text-[11px] font-bold outline-none w-48">
+                </div>
+                <button class="bg-slate-900 text-white px-8 py-3 rounded-full text-xs font-bold hover:bg-blue-600 transition shadow-xl" data-i18n="getstarted">GET STARTED</button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 pt-44 pb-20">
+        <div class="mb-10 text-center md:text-left">
+            <h1 class="text-4xl md:text-7xl font-extrabold tracking-tight mb-6 leading-tight">
+                <span data-i18n="hero-1">Universal</span> <span class="text-blue-600" data-i18n="hero-2">Processor.</span>
+            </h1>
+            <p class="text-slate-500 font-medium text-lg" data-i18n="hero-sub">World's most advanced secure file conversion engine.</p>
+        </div>
+
+        <div class="flex gap-3 overflow-x-auto no-scrollbar pb-6 mb-12" id="filter-bar">
+            <div onclick="applyFilter(this, 'all')" class="filter-pill active px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest bg-white shadow-sm" data-i18n="cat-all">All Modules</div>
+            <div onclick="applyFilter(this, 'pdf')" class="filter-pill px-8 py-4 rounded-2xl bg-white font-bold text-xs uppercase tracking-widest" data-i18n="cat-pdf">PDF Hub</div>
+            <div onclick="applyFilter(this, 'image')" class="filter-pill px-8 py-4 rounded-2xl bg-white font-bold text-xs uppercase tracking-widest" data-i18n="cat-img">Graphics</div>
+            <div onclick="applyFilter(this, 'doc')" class="filter-pill px-8 py-4 rounded-2xl bg-white font-bold text-xs uppercase tracking-widest" data-i18n="cat-office">Office</div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6" id="tool-grid"></div>
+    </main>
+
+    <script>
+        const tools = [
+            { id: 1, name: 'PDF to Doc', cat: 'pdf', icon: 'fa-file-word', col: '#3b82f6', route: '/pdf-to-doc' },
+            { id: 13, name: 'Word to PDF', cat: 'doc', icon: 'fa-file-pdf', col: '#2563eb', route: '/word-to-pdf' }, // NEW TOOL
+            { id: 2, name: 'Img to PDF', cat: 'image', icon: 'fa-image', col: '#10b981', route: '/image-to-pdf' },
+            { id: 3, name: 'Compress', cat: 'pdf', icon: 'fa-compress', col: '#8b5cf6', route: '/compress' },
+            { id: 4, name: 'OCR Text', cat: 'doc', icon: 'fa-font', col: '#f59e0b', route: '/ocr' },
+            { id: 6, name: 'Excel to PDF', cat: 'doc', icon: 'fa-file-excel', col: '#059669', route: '/excel-to-pdf' },
+            { id: 7, name: 'PDF to JPG', cat: 'image', icon: 'fa-file-image', col: '#f97316', route: '/pdf-to-jpg' },
+            { id: 9, name: 'Merge PDF', cat: 'pdf', icon: 'fa-layer-group', col: '#6366f1', route: '/merge' },
+            { id: 11, name: 'Sign PDF', cat: 'security', icon: 'fa-signature', col: '#0ea5e9', route: '/sign' },
+            { id: 12, name: 'PPT to PDF', cat: 'doc', icon: 'fa-file-powerpoint', col: '#e11d48', route: '/ppt-to-pdf' }
+        ];
+
+        function initGrid(data = tools) {
+            const grid = document.getElementById('tool-grid');
+            grid.innerHTML = ''; // Clear grid
+
+            if (data.length === 0) {
+                grid.innerHTML = '<div class="col-span-full py-20 text-center text-slate-400 font-bold uppercase tracking-widest opacity-50">No modules found...</div>';
+                return;
+            }
+
+            data.forEach((t, i) => {
+                const card = document.createElement('a');
+                card.href = t.route;
+                card.className = 'tool-card p-8 rounded-[2.5rem] flex flex-col items-center text-center cursor-pointer';
+                card.style.animationDelay = `${i * 50}ms`; // Staggered entrance
+                
+                card.innerHTML = `
+                    <div class="icon-box w-16 h-16 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500" style="background: ${t.col}15">
+                        <i class="fas ${t.icon} text-2xl" style="color: ${t.col}"></i>
+                    </div>
+                    <span class="text-[12px] font-bold uppercase tracking-widest text-slate-800 tool-name">${t.name}</span>
+                `;
+                
+                grid.appendChild(card);
+                
+                // Trigger animation reflow
+                setTimeout(() => card.classList.add('revealed'), 10);
+            });
+        }
+
+        // Search logic with real-time feedback
+        document.getElementById('tool-search').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = tools.filter(t => t.name.toLowerCase().includes(term));
+            initGrid(filtered);
+        });
+
+        function applyFilter(pill, cat) {
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            initGrid(cat === 'all' ? tools : tools.filter(t => t.cat === cat));
+        }
+
+        function toggleDropdown(id) { document.getElementById(id).classList.toggle('show'); }
+
+        window.onscroll = () => { 
+            document.getElementById('main-nav').classList.toggle('scrolled', window.pageYOffset > 40); 
+        };
+
+        initGrid();
+    </script>
+</body>
+</html>

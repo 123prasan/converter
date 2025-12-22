@@ -1,0 +1,25 @@
+# --- Core PDF Manipulation (Sign, Merge, Compress, Repair) ---
+pymupdf
+
+# --- Security & Encryption (Unlock, E2EE) ---
+pikepdf
+cryptography
+
+# --- Office to PDF (Dynamic OS Engine) ---
+python-docx
+docx2pdf; platform_system == "Windows"
+comtypes; platform_system == "Windows"
+aspose-cells
+
+# --- OCR & Image Processing (OCR Text, PDF to JPG) ---
+easyocr
+opencv-python-headless
+numpy
+pdf2image
+img2pdf
+Pillow
+
+# --- PDF to Doc & Advanced Analysis ---
+pdfplumber
+pdf2docx
+pytesseract

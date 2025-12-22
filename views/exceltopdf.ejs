@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OmniGrid NX | Excel to PDF Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --nx-emerald: #059669;
+            --nx-bg: #ffffff;
+            --nx-border: #f1f5f9;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--nx-bg);
+            color: #0f172a;
+            overflow-x: hidden;
+        }
+
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #f0fdf4 0%, #ffffff 100%);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .animate-hero { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .animate-card { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both; }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #059669, #10b981);
+            transition: width 0.4s ease;
+        }
+
+        .glass-feature {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(241, 245, 249, 1);
+            transition: all 0.3s ease;
+        }
+        .glass-feature:hover {
+            background: white;
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(5, 150, 105, 0.1);
+        }
+
+        .shape {
+            position: absolute;
+            background: var(--nx-emerald);
+            filter: blur(100px);
+            opacity: 0.05;
+            z-index: -1;
+            border-radius: 50%;
+            animation: float 25s infinite alternate;
+        }
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(150px, 100px) rotate(15deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="bg-canvas">
+        <div class="shape w-[500px] h-[500px] top-[-100px] left-[-100px]"></div>
+        <div class="shape w-[400px] h-[400px] bottom-[-50px] right-[-50px]" style="animation-delay: -7s; background: #2563eb;"></div>
+    </div>
+
+    <nav class="px-6 py-6 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-xl sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center rotate-12">
+                <i class="fas fa-bolt text-white text-xs"></i>
+            </div>
+            <span class="text-xl font-black tracking-tighter">OMNIGrid <span class="text-blue-600 italic text-sm">PRO</span></span>
+        </div>
+        <button class="bg-slate-900 text-white px-6 py-2.5 rounded-full text-xs font-bold hover:bg-blue-600 transition shadow-xl">
+            API ACCESS
+        </button>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-12 lg:py-20">
+        <div class="flex flex-col lg:flex-row items-center gap-16">
+            
+            <div class="lg:w-1/2 animate-hero">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 mb-6">
+                    <span class="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Premium Data Rendering</span>
+                </div>
+                
+                <h1 class="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8">
+                    Excel to <span class="text-emerald-600">PDF</span> <br>Smart Map.
+                </h1>
+                
+                <p class="text-lg text-slate-500 font-medium mb-10 max-w-lg leading-relaxed">
+                    Convert complex workbooks into readable PDF documents. We preserve your cell formatting, tables, and charts with mathematical precision.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-600/10 flex items-center justify-center shrink-0">
+                            <i class="fas fa-table-list text-emerald-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-sm">Table Fidelity</h4>
+                            <p class="text-xs text-slate-400 mt-1">Grid lines and borders maintained.</p>
+                        </div>
+                    </div>
+                    <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center shrink-0">
+                            <i class="fas fa-chart-pie text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-sm">Chart Support</h4>
+                            <p class="text-xs text-slate-400 mt-1">High-quality vector graph export.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:w-1/2 w-full animate-card">
+                <div class="bg-white p-3 rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(5,150,105,0.1)] border border-slate-50 relative overflow-hidden">
+                    <div id="drop-zone" class="bg-slate-50 rounded-[2.6rem] py-20 px-10 text-center border-2 border-dashed border-slate-200 transition-all cursor-pointer hover:border-emerald-400 group">
+                        <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls">
+                        
+                        <div id="idle-ui">
+                            <div class="relative w-24 h-24 mx-auto mb-8">
+                                <div class="absolute inset-0 bg-emerald-600 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                                <div class="relative w-full h-full bg-white rounded-3xl shadow-sm flex items-center justify-center border border-slate-100">
+                                    <i class="fas fa-file-excel text-emerald-600 text-3xl"></i>
+                                </div>
+                            </div>
+                            <h3 class="text-2xl font-black mb-2">Workbook to PDF</h3>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-10">Upload .xlsx or .xls files</p>
+                            
+                            <button onclick="document.getElementById('fileInput').click()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] shadow-xl hover:bg-emerald-600 transition-all">
+                                SELECT EXCEL FILE
+                            </button>
+                        </div>
+
+                        <div id="processing-ui" class="hidden">
+                            <div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-8"></div>
+                            <h3 id="status-text" class="text-xl font-extrabold text-slate-800">Calculating Sheets...</h3>
+                            <div class="progress-container">
+                                <div class="progress-bar" id="p-bar"></div>
+                            </div>
+                            <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest animate-pulse">Mapping Cell Coordinates</p>
+                        </div>
+
+                        <div id="complete-ui" class="hidden">
+                            <div class="w-24 h-24 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-emerald-100 scale-110">
+                                <i class="fas fa-check text-3xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-black mb-1">Conversion Done!</h3>
+                            <p class="text-xs font-bold text-slate-400 mb-10 uppercase tracking-widest">Your data is ready for printing</p>
+                            
+                            <div class="space-y-3">
+                                <button id="downloadBtn" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all">
+                                    <i class="fas fa-download mr-2"></i> DOWNLOAD PDF
+                                </button>
+                                <button onclick="location.reload()" class="text-xs font-bold text-slate-400 hover:text-slate-900 transition underline underline-offset-4">
+                                    Convert another file
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+
+        fileInput.onchange = (e) => {
+            if(e.target.files.length) handleConversion(e.target.files[0]);
+        };
+
+        async function handleConversion(file) {
+            document.getElementById('idle-ui').classList.add('hidden');
+            document.getElementById('processing-ui').classList.remove('hidden');
+            
+            const steps = ["Reading Worksheets...", "Parsing Cell Data...", "Rendering Charts...", "Finalizing PDF Layout..."];
+            let progress = 0;
+            const bar = document.getElementById('p-bar');
+            const status = document.getElementById('status-text');
+
+            const interval = setInterval(() => {
+                progress += Math.random() * 18;
+                if(progress > 95) progress = 95;
+                bar.style.width = `${progress}%`;
+                status.innerText = steps[Math.floor((progress/100) * steps.length)];
+            }, 650);
+
+            const formData = new FormData();
+            formData.append("excel", file);
+
+            try {
+                const response = await fetch("/excel-to-pdf", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error("Conversion failed");
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+
+                clearInterval(interval);
+                bar.style.width = "100%";
+                
+                setTimeout(() => {
+                    document.getElementById('processing-ui').classList.add('hidden');
+                    document.getElementById('complete-ui').classList.remove('hidden');
+
+                    document.getElementById('downloadBtn').onclick = () => {
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = file.name.split('.')[0] + ".pdf";
+                        a.click();
+                    };
+                }, 500);
+
+            } catch (err) {
+                alert("Error: " + err.message);
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OmniGrid NX | AI OCR Vision</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --nx-blue: #2563eb;
+            --nx-amber: #f59e0b;
+            --nx-bg: #ffffff;
+            --nx-border: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--nx-bg);
+            color: #0f172a;
+            overflow-x: hidden;
+        }
+
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #fffaf0 0%, #ffffff 100%);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .animate-hero { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .animate-card { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both; }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--nx-amber), var(--nx-blue));
+            transition: width 0.4s ease;
+        }
+
+        .glass-feature {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(241, 245, 249, 1);
+            transition: all 0.3s ease;
+        }
+
+        .glass-feature:hover {
+            background: white;
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(245, 158, 11, 0.1);
+        }
+
+        .shape {
+            position: absolute;
+            background: var(--nx-amber);
+            filter: blur(100px);
+            opacity: 0.08;
+            z-index: -1;
+            border-radius: 50%;
+            animation: float 25s infinite alternate;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(150px, 100px) rotate(15deg); }
+        }
+
+        .output-area {
+            font-family: 'Courier New', Courier, monospace;
+            background: #fafafa;
+            border: 1px solid #f1f5f9;
+            resize: none;
+        }
+    </style>
+</head>
+
+<body class="antialiased">
+
+    <div id="bg-canvas">
+        <div class="shape w-[500px] h-[500px] top-[-100px] left-[-100px]"></div>
+        <div class="shape w-[400px] h-[400px] bottom-[-50px] right-[-50px]" style="animation-delay: -7s; background: var(--nx-blue);"></div>
+    </div>
+
+    <nav class="px-6 py-6 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-xl sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center rotate-12 shadow-lg">
+                <i class="fas fa-bolt text-white text-xs"></i>
+            </div>
+            <span class="text-xl font-black tracking-tighter">OMNIGrid <span class="text-blue-600 italic text-sm">PRO</span></span>
+        </div>
+        <button class="bg-slate-900 text-white px-6 py-2.5 rounded-full text-xs font-bold hover:bg-amber-600 transition shadow-xl uppercase tracking-widest">
+            Neural Vision Active
+        </button>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-12 lg:py-20">
+        <div class="flex flex-col lg:flex-row items-center gap-16">
+
+            <div class="lg:w-1/2 animate-hero">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-100 mb-6">
+                    <span class="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Advanced EasyOCR Engine</span>
+                </div>
+                <h1 class="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8">
+                    Smart <span class="text-amber-500">Vision</span> <br>Scanner.
+                </h1>
+                <p class="text-lg text-slate-500 font-medium mb-10 max-w-lg leading-relaxed">
+                    Powered by Deep Learning. Extract English, Kannada, and Hindi text from complex images with surgical precision.
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-amber-600/10 flex items-center justify-center shrink-0"><i class="fas fa-microchip text-amber-600"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm">CRAFT Detector</h4>
+                            <p class="text-xs text-slate-400 mt-1">Deep text-region awareness.</p>
+                        </div>
+                    </div>
+                    <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center shrink-0"><i class="fas fa-brain text-blue-600"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm">ResNet-RNN</h4>
+                            <p class="text-xs text-slate-400 mt-1">Contextual script recognition.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:w-1/2 w-full animate-card">
+                <div class="bg-white p-3 rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(245,158,11,0.15)] border border-slate-50 relative overflow-hidden">
+                    <div id="drop-zone" class="bg-slate-50 rounded-[2.6rem] py-20 px-10 text-center border-2 border-dashed border-slate-200 transition-all cursor-pointer hover:border-amber-400 group">
+                        <input type="file" id="fileInput" class="hidden" accept="image/*,.pdf">
+
+                        <div id="idle-ui">
+                            <div class="relative w-24 h-24 mx-auto mb-8">
+                                <div class="absolute inset-0 bg-amber-600 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                                <div class="relative w-full h-full bg-white rounded-3xl shadow-sm flex items-center justify-center border border-slate-100">
+                                    <i class="fas fa-expand text-amber-600 text-3xl animate-pulse"></i>
+                                </div>
+                            </div>
+                            <h3 class="text-2xl font-black mb-2">Scan Document</h3>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-10">AI-Ready Multi-Lang Scan</p>
+
+                            <button onclick="document.getElementById('fileInput').click()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] shadow-xl hover:bg-amber-600 transition-all">
+                                SELECT IMAGE / PDF
+                            </button>
+                        </div>
+
+                        <div id="processing-ui" class="hidden">
+                            <div class="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-8"></div>
+                            <h3 id="status-text" class="text-xl font-extrabold text-slate-800 italic">Initializing AI...</h3>
+                            <div class="progress-container">
+                                <div class="progress-bar" id="p-bar"></div>
+                            </div>
+                            <p class="text-[10px] font-black text-amber-500 uppercase tracking-widest animate-pulse">Neural Core Processing</p>
+                        </div>
+
+                        <div id="complete-ui" class="hidden text-left">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Extracted Text Preview</label>
+                            <div class="mb-6">
+                                <textarea id="ocr-result" class="output-area w-full h-56 p-4 rounded-2xl text-xs text-slate-600 focus:ring-1 focus:ring-amber-500 outline-none" spellcheck="false"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <button id="copyBtn" class="bg-amber-600 text-white py-4 rounded-xl font-black text-[10px] tracking-[0.1em] hover:bg-amber-700 transition-all">
+                                    <i class="fas fa-copy mr-2"></i> COPY TEXT
+                                </button>
+                                <button onclick="location.reload()" class="bg-slate-900 text-white py-4 rounded-xl font-black text-[10px] tracking-[0.1em] hover:bg-blue-600 transition-all">
+                                    <i class="fas fa-redo mr-2"></i> NEW SCAN
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const socket = io();
+        let currentProgress = 0;
+
+        socket.on('conversion-status', (msg) => {
+            const statusLabel = document.getElementById('status-text');
+            statusLabel.innerText = msg;
+            
+            // Increment progress bar based on key AI milestones
+            if (msg.includes("Initializing")) currentProgress = 20;
+            if (msg.includes("Kannada")) currentProgress = 50;
+            if (msg.includes("Hindi")) currentProgress = 80;
+            if (msg.includes("Synergizing")) currentProgress = 95;
+            
+            document.getElementById('p-bar').style.width = currentProgress + "%";
+        });
+
+        socket.on('conversion-finished', (data) => {
+            document.getElementById('p-bar').style.width = "100%";
+            fetch(data.downloadUrl)
+                .then(res => res.text())
+                .then(text => {
+                    const resultArea = document.getElementById('ocr-result');
+                    // Format output: remove AI artifacts and normalize spacing
+                    const formattedText = text.trim()
+                        .replace(/\n{3,}/g, '\n\n'); // Max two newlines
+                    
+                    resultArea.value = formattedText || "No text could be extracted. Please ensure the image is clear.";
+
+                    document.getElementById('processing-ui').classList.add('hidden');
+                    document.getElementById('complete-ui').classList.remove('hidden');
+                });
+        });
+
+        const fileInput = document.getElementById('fileInput');
+        fileInput.onchange = (e) => {
+            if (e.target.files.length) handleOCR(e.target.files[0]);
+        };
+
+        async function handleOCR(file) {
+            if (!socket.connected) return alert("System connecting... please try again in 2 seconds.");
+
+            document.getElementById('idle-ui').classList.add('hidden');
+            document.getElementById('processing-ui').classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append("image", file);
+            formData.append("socketId", socket.id);
+
+            try {
+                const response = await fetch("/ocr-extract", {
+                    method: "POST",
+                    body: formData
+                });
+                if (!response.ok) throw new Error("OCR Processing Failed");
+            } catch (err) {
+                alert("Error: " + err.message);
+                location.reload();
+            }
+        }
+
+        document.getElementById('copyBtn').onclick = () => {
+            const textArea = document.getElementById('ocr-result');
+            textArea.select();
+            document.execCommand('copy');
+            const btn = document.getElementById('copyBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check mr-2"></i> COPIED!';
+            setTimeout(() => btn.innerHTML = originalText, 2000);
+        };
+    </script>
+</body>
+</html>

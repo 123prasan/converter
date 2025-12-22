@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OmniGrid NX | Master PDF Signer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --nx-sky: #0ea5e9; --nx-bg: #ffffff; --nx-border: #f1f5f9; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--nx-bg); color: #0f172a; overflow-x: hidden; }
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(circle at 50% 50%, #f0f9ff 0%, #ffffff 100%); }
+        
+        .animate-hero { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .animate-card { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        .progress-container { width: 100%; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; margin: 20px 0; }
+        .progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #0ea5e9, #2563eb); transition: width 0.4s ease; }
+        
+        .glass-feature { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(241, 245, 249, 1); transition: all 0.3s ease; }
+        .glass-feature:hover { background: white; transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(14, 165, 233, 0.1); }
+        
+        .signature-preview-box { 
+            font-family: 'Dancing Script', cursive; 
+            min-height: 100px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: #0f172a; 
+            border-radius: 24px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .input-pill {
+            background: #ffffff;
+            border: 2px solid #f1f5f9;
+            border-radius: 16px;
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+        .input-pill:focus { border-color: var(--nx-sky); outline: none; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="bg-canvas"></div>
+
+    <nav class="px-6 py-6 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-xl sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="bg-sky-600 w-8 h-8 rounded-lg flex items-center justify-center rotate-12 shadow-lg">
+                <i class="fas fa-file-signature text-white text-xs"></i>
+            </div>
+            <span class="text-xl font-black tracking-tighter">OMNIGrid <span class="text-sky-600 italic text-sm">PRO</span></span>
+        </div>
+        <button class="bg-slate-900 text-white px-6 py-2.5 rounded-full text-[10px] font-bold tracking-widest uppercase">Verified e-Sign</button>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-12 lg:py-20">
+        <div class="flex flex-col lg:flex-row items-center gap-16">
+            
+            <div class="lg:w-1/2 animate-hero">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-100 mb-6">
+                    <span class="text-[10px] font-bold text-sky-700 uppercase tracking-widest">Advanced Signature Lab</span>
+                </div>
+                <h1 class="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8">
+                    Master <span class="text-sky-500">Sign</span> <br>Engine.
+                </h1>
+                <p class="text-lg text-slate-500 font-medium mb-10 max-w-lg leading-relaxed">
+                    Personalize your signature across all pages or specific ranges. Adjust typography, ink color, and density with real-time visual feedback.
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-sky-600/10 flex items-center justify-center shrink-0"><i class="fas fa-swatchbook text-sky-600"></i></div>
+                        <div><h4 class="font-bold text-sm">Color Precision</h4><p class="text-xs text-slate-400 mt-1">Full Hex RGB mapping.</p></div>
+                    </div>
+                    <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center shrink-0"><i class="fas fa-list-ol text-blue-600"></i></div>
+                        <div><h4 class="font-bold text-sm">Page Logic</h4><p class="text-xs text-slate-400 mt-1">Multi-page automation.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:w-1/2 w-full animate-card">
+                <div class="bg-white p-3 rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(14,165,233,0.15)] border border-slate-50 relative overflow-hidden">
+                    <div id="drop-zone" class="bg-slate-50 rounded-[2.6rem] py-16 px-8 text-center border-2 border-dashed border-slate-200 transition-all cursor-pointer hover:border-sky-400 group">
+                        <input type="file" id="pdfFileInput" class="hidden" accept=".pdf">
+                        
+                        <div id="idle-ui">
+                            <div class="relative w-24 h-24 mx-auto mb-8">
+                                <div class="absolute inset-0 bg-sky-600 blur-2xl opacity-10 group-hover:opacity-30"></div>
+                                <div class="relative w-full h-full bg-white rounded-3xl shadow-sm flex items-center justify-center border border-slate-100">
+                                    <i class="fas fa-file-import text-sky-600 text-3xl"></i>
+                                </div>
+                            </div>
+                            <h3 class="text-2xl font-black mb-2">Import Document</h3>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-10">Select PDF to sign</p>
+                            <button onclick="document.getElementById('pdfFileInput').click()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] shadow-xl hover:bg-sky-600 transition-all">CHOOSE FILE</button>
+                        </div>
+
+                        <div id="sign-ui" class="hidden text-left animate-hero">
+                            <div class="mb-6">
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Full Name</label>
+                                <input type="text" id="signerName" placeholder="Enter name" class="input-pill w-full italic text-lg" oninput="updatePreview()">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-2">Range (e.g. all, 1, 2-5)</label>
+                                    <input type="text" id="pageRange" value="all" class="input-pill w-full">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-2">Ink Color</label>
+                                    <input type="color" id="textColor" value="#38bdf8" class="w-full h-12 p-1 bg-white border-2 border-slate-100 rounded-2xl cursor-pointer" oninput="updatePreview()">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-2">Size (px)</label>
+                                    <input type="number" id="fontSize" value="30" class="input-pill w-full" oninput="updatePreview()">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-2">Style</label>
+                                    <select id="fontStyle" class="input-pill w-full" onchange="updatePreview()">
+                                        <option value="bold_italic">Bold Italic</option>
+                                        <option value="italic">Italic</option>
+                                        <option value="bold">Bold</option>
+                                        <option value="regular">Regular</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="signature-preview-box mb-8 relative">
+                                <div class="absolute top-2 right-4 text-[7px] font-black text-slate-500 tracking-[0.2em]">LIVE RENDER</div>
+                                <div id="name-preview" class="text-sky-400">Signature Preview</div>
+                            </div>
+
+                            <button onclick="startSigning()" class="w-full bg-sky-600 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] shadow-xl hover:bg-sky-700 transition-all">APPLY SIGNATURE</button>
+                        </div>
+
+                        <div id="processing-ui" class="hidden">
+                            <div class="w-16 h-16 border-4 border-sky-600 border-t-transparent rounded-full animate-spin mx-auto mb-8"></div>
+                            <h3 id="status-text" class="text-xl font-extrabold text-slate-800 italic">Encrypting...</h3>
+                            <div class="progress-container"><div class="progress-bar" id="p-bar"></div></div>
+                        </div>
+
+                        <div id="complete-ui" class="hidden">
+                            <div class="w-20 h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-emerald-100">
+                                <i class="fas fa-check-double text-2xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-black mb-1">Finalized!</h3>
+                            <p class="text-xs font-bold text-slate-400 mb-10 uppercase tracking-widest">Document has been signed</p>
+                            <button id="downloadBtn" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[10px] tracking-[0.2em] shadow-lg hover:bg-sky-600 transition-all uppercase">DOWNLOAD SIGNED PDF</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const socket = io();
+        let socketId = "", selectedFile = null;
+
+        socket.on('connect', () => { socketId = socket.id; });
+        socket.on('conversion-status', (msg) => {
+            document.getElementById('status-text').innerText = msg;
+            let bar = document.getElementById('p-bar');
+            let currentWidth = parseFloat(bar.style.width) || 0;
+            if (currentWidth < 90) bar.style.width = (currentWidth + 20) + "%";
+        });
+        socket.on('conversion-finished', (data) => {
+            document.getElementById('p-bar').style.width = "100%";
+            setTimeout(() => {
+                document.getElementById('processing-ui').classList.add('hidden');
+                document.getElementById('complete-ui').classList.remove('hidden');
+                document.getElementById('downloadBtn').onclick = () => window.location.href = data.downloadUrl;
+            }, 600);
+        });
+        socket.on('conversion-error', (err) => { alert(err); location.reload(); });
+
+        document.getElementById('pdfFileInput').onchange = (e) => {
+            if(e.target.files.length) {
+                selectedFile = e.target.files[0];
+                document.getElementById('idle-ui').classList.add('hidden');
+                document.getElementById('sign-ui').classList.remove('hidden');
+                updatePreview();
+            }
+        };
+
+        function updatePreview() {
+            const preview = document.getElementById('name-preview');
+            const style = document.getElementById('fontStyle').value;
+            preview.innerText = document.getElementById('signerName').value || "Signature Preview";
+            preview.style.color = document.getElementById('textColor').value;
+            preview.style.fontSize = Math.min(document.getElementById('fontSize').value, 60) + "px";
+            preview.style.fontStyle = style.includes('italic') ? 'italic' : 'normal';
+            preview.style.fontWeight = style.includes('bold') ? 'bold' : 'normal';
+        }
+
+        async function startSigning() {
+            const name = document.getElementById('signerName').value;
+            if(!name) return alert("Please enter your name.");
+            
+            document.getElementById('sign-ui').classList.add('hidden');
+            document.getElementById('processing-ui').classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append("pdf", selectedFile);
+            formData.append("name", name);
+            formData.append("pageRange", document.getElementById('pageRange').value);
+            formData.append("fontSize", document.getElementById('fontSize').value);
+            formData.append("textColor", document.getElementById('textColor').value);
+            formData.append("fontStyle", document.getElementById('fontStyle').value);
+            formData.append("socketId", socketId);
+            formData.append("x", "100");
+            formData.append("y", "700");
+
+            await fetch("/sign-pdf", { method: "POST", body: formData });
+        }
+    </script>
+</body>
+</html>
