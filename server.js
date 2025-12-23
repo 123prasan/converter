@@ -1,14 +1,20 @@
 const express = require('express');
+const cors = require('cors');
 const multer = require('multer');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const { Server } = require('socket.io');
 const net = require('net');
+const compression = require('compression');
 
 const app = express();
 const server = http.createServer(app);
+app.use(cors({
+    origin: '*', // Allow connections from any frontend (React, local files, etc.)
+    methods: ['GET', 'POST']
+}));
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
@@ -92,11 +98,35 @@ scanAndCleanup(outputsDir);
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(express.static(path.join(__dirname, 'public')));
+// Compression for assets and faster payloads
+app.use(compression());
+// Public assets (long cache), uploads (short cache matching TTL)
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '30d' }));
 // Serve uploaded files over HTTP so PDF.js can fetch them (do NOT use file:/// paths)
-app.use('/uploads', express.static(uploadDir));
+app.use('/uploads', express.static(uploadDir, { maxAge: `${Math.min(FILE_TTL_MS, 5*60*1000)}ms` }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// --- SEO defaults middleware ---
+app.use((req, res, next) => {
+    const siteName = 'OMNIGrid NX';
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+    res.locals.meta = res.locals.meta || {};
+    res.locals.meta.title = res.locals.meta.title || `${siteName} — Secure Online Converters & PDF Tools`;
+    res.locals.meta.description = res.locals.meta.description || 'Fast, secure online PDF & document converters. Convert, compress, merge, sign, and more — privacy-first, files auto-deleted after 5 minutes.';
+    res.locals.meta.url = baseUrl + req.originalUrl;
+    res.locals.meta.image = res.locals.meta.image || `${baseUrl}/assets/og-image.svg`;
+    res.locals.meta.type = res.locals.meta.type || 'website';
+    res.locals.meta.keywords = res.locals.meta.keywords || 'pdf converter, word to pdf, ppt to pdf, compress pdf, merge pdf, online converters';
+
+    res.locals.canonicalUrl = (res.locals.meta.url || baseUrl).split('?')[0];
+    res.locals.jsonLd = res.locals.jsonLd || null;
+    res.locals.extraHead = res.locals.extraHead || '';
+    res.locals.gaId = process.env.GA_TRACKING_ID || null;
+
+    next();
+});
 
 // --- STORAGE CONFIGURATION ---
 const storage = multer.diskStorage({
@@ -123,6 +153,8 @@ function executeTask(res, options) {
         env: { ...process.env, PYTHONUTF8: '1' }
     });
 
+    let fullOutputBuffer = "";
+
     python.on('error', (err) => {
         console.error(`[SPAWN ERROR] ${script}:`, err.message);
         if (socketId) io.to(socketId).emit('conversion-error', 'Engine spawn failed: ' + err.message);
@@ -130,10 +162,13 @@ function executeTask(res, options) {
     });
 
     python.stdout.on('data', (data) => {
-        const msg = data.toString().trim();
-        if (msg) {
-            console.log(`[PYTHON] ${script}: ${msg}`);
-            if (socketId) io.to(socketId).emit('conversion-status', msg);
+        const msg = data.toString();
+        fullOutputBuffer += msg; // Accumulate logs for regex parsing
+        
+        const trimmedMsg = msg.trim();
+        if (trimmedMsg) {
+            console.log(`[PYTHON] ${script}: ${trimmedMsg}`);
+            if (socketId) io.to(socketId).emit('conversion-status', trimmedMsg);
         }
     });
 
@@ -147,15 +182,22 @@ function executeTask(res, options) {
     });
 
     python.on('close', (code) => {
-        // 1. Schedule input files for deletion (instead of immediate unlink). This ensures files live for FILE_TTL_MS and makes behavior robust across restarts.
+        // 1. Schedule input files for deletion (instead of immediate unlink).
         inputPaths.forEach(p => scheduleDeletion(p));
 
         if (code === 0) {
             const stats = fs.existsSync(outputPath) ? fs.statSync(outputPath) : { size: 0 };
+            
+            // --- TIME EXTRACTION LOGIC ---
+            // Regex to find "won in 0.4532s" from python output
+            const timeMatch = fullOutputBuffer.match(/won in ([\d\.]+)s/);
+            const durationStr = timeMatch ? timeMatch[1] : null;
+
             const responseData = { 
                 status: 'success',
                 downloadUrl: `/download/${outputFilename}`,
-                fileSize: stats.size 
+                fileSize: stats.size,
+                duration: durationStr // Sends the exact time to frontend
             };
             
             // Send final socket update
@@ -179,7 +221,11 @@ function executeTask(res, options) {
 }
 
 // --- ROUTES ---
-app.get('/', (req, res) => res.render('index'));
+app.get('/', (req, res) => {
+    res.locals.meta.title = 'OMNIGrid NX — Free Online PDF & Document Converters';
+    res.locals.meta.description = 'Convert Word, PPT & images, compress, merge and sign PDFs securely. Privacy-first: files auto-delete after 5 minutes.';
+    res.render('index');
+});
 const views = ['ptod', 'image-pdf', 'compress', 'ocrtext', 'unlock', 'exceltopdf', 'protectpdf', 'mergepdf', 'singn', 'pdf2jpg', 'ppttopdf', 'doc-pdf'];
 const routeAliases = {
   'ptod': '/pdf-to-doc',
@@ -201,12 +247,54 @@ views.forEach(v => {
   if (routeAliases[v]) app.get(routeAliases[v], (req, res) => res.render(v));
 });
 
+// Per-route SEO overrides (quick mapping for high-value tools)
+app.use((req, res, next) => {
+    const map = {
+        '/word-to-pdf': { title: 'Word to PDF - Free Online Converter', description: 'Convert Word (.doc, .docx) to high-quality PDF instantly. Secure, fast, and auto-deleted uploads.' },
+        '/image-to-pdf': { title: 'Image to PDF - Free Converter', description: 'Combine images into a single PDF quickly. Supports PNG, JPG and more.' },
+        '/compress': { title: 'Compress PDF - Reduce File Size', description: 'Reduce PDF size while retaining quality. Fast online compression with privacy-first policy.' },
+        '/merge': { title: 'Merge PDF - Combine Documents Online', description: 'Merge multiple PDFs into one document quickly and securely.' },
+        '/sign-upload': { title: 'Sign PDF - Online Signature & Watermark', description: 'Add signatures and watermarks to PDFs with precise positioning and style controls.' }
+    };
+
+    if (map[req.path]) {
+        res.locals.meta = Object.assign({}, res.locals.meta, map[req.path]);
+        res.locals.canonicalUrl = `${req.protocol}://${req.get('host')}${req.path}`;
+        // Attach a simple SoftwareApplication JSON-LD snippet for converter pages
+        res.locals.jsonLd = {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": res.locals.meta.title,
+            "operatingSystem": "Web",
+            "applicationCategory": "Utilities",
+            "description": res.locals.meta.description,
+            "url": res.locals.canonicalUrl
+        };
+    }
+    next();
+});
+
 // --- DOWNLOAD UTILITY ---
 app.get('/download/:filename', (req, res) => {
     const file = path.join(uploadDir, req.params.filename);
     res.download(file, (err) => {
         if (err && !res.headersSent) res.status(404).send("File expired.");
     });
+});
+
+// --- Robots.txt and Sitemap ---
+app.get('/robots.txt', (req, res) => {
+    const base = `${req.protocol}://${req.get('host')}`;
+    const txt = `User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`;
+    res.type('text/plain').send(txt);
+});
+
+app.get('/sitemap.xml', (req, res) => {
+    const base = `${req.protocol}://${req.get('host')}`;
+    const pages = ['/', '/word-to-pdf', '/image-to-pdf', '/compress', '/merge', '/sign-upload', '/pdf-to-doc', '/excel-to-pdf', '/ppt-to-pdf', '/protect', '/ocr', '/pdf-to-jpg'];
+    const urls = pages.map(p => `  <url>\n    <loc>${base + p}</loc>\n    <lastmod>${new Date().toISOString()}</lastmod>\n  </url>`).join('\n');
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
+    res.type('application/xml').send(xml);
 });
 
 // --- TOOL ENDPOINTS ---

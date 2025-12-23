@@ -1,14 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OmniGrid NX | Master PDF Signer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    <%- include('partials/head') %>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
     <style>
         :root { --nx-sky: #0ea5e9; --nx-bg: #ffffff; --nx-border: #f1f5f9; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--nx-bg); color: #0f172a; overflow-x: hidden; }
@@ -423,5 +417,6 @@
             await fetch("/sign-pdf", { method: "POST", body: formData });
         }
     </script>
+    <script defer src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </body>
 </html>

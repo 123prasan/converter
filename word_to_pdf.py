@@ -1,434 +1,258 @@
 import sys
 import os
 import subprocess
-import platform
 import time
-from pathlib import Path
-from functools import lru_cache
-
-# ======================== ULTRA-FAST WORD-TO-PDF ENGINE v3.0 ========================
-# SPEED ENHANCEMENTS:
-# 1. Intelligent engine selection based on file format & size
-# 2. Parallel conversion attempts (fail fast, retry smart)
-# 3. Direct binary conversion (no intermediate formats)
-# 4. Optimized timeouts (60s max per conversion)
-# 5. Memory-efficient streaming (file size up to 1GB)
-# 6. Smart caching of engine detection
-# 7. Format-specific optimizations (DOCX vs DOC vs ODP)
-# 8. Output compression & optimization
-# 9. Real-time progress tracking
-# ======================================================================================
-
-def log(message):
-    """Real-time logging to Node.js backend"""
-    print(message)
-    sys.stdout.flush()
-
-@lru_cache(maxsize=1)
-def detect_input_format(input_path):
-    """Cache format detection"""
-    ext = os.path.splitext(input_path)[1].lower()
-    formats = {
-        '.doc': 'word_97',
-        '.docx': 'word_modern',
-        '.rtf': 'rich_text',
-        '.odt': 'openoffice',
-        '.txt': 'plain_text'
-    }
-    return formats.get(ext, 'unknown')
-
-def get_file_size_mb(path):
-    """Get file size in MB"""
-    return os.path.getsize(path) / (1024 * 1024)
-
-# Helper: run commands in parallel and return when first produces the output file
 import threading
 
-def run_command_race(commands, output_path, timeout_secs=9):
-    """Run multiple shell commands in parallel; return True if any produces output_path within timeout.
-    commands: list of lists (args for subprocess.Popen)
-    """
-    procs = []
-    finished = threading.Event()
-    result = { 'success': False, 'method': None, 'stderr': '' }
+# ======================================================================================
+#  HYPER-SPEED WORD-TO-PDF ENGINE v8.0 (The "Zero-Latency" Edition)
+#  Optimizations:
+#   1. Lazy Importing: Heavy modules load only when needed (Startup Boost)
+#   2. Word COM Tuning: Disables Spellcheck/Pagination for raw speed
+#   3. Micro-Polling: 10ms reaction time
+#   4. Fast OS Checks: Removed 'platform' module overhead
+# ======================================================================================
 
-    def runner(cmd, method_name):
+# --- CONFIGURATION ---
+TIMEOUT_SECONDS = 25
+POLL_INTERVAL = 0.01  # 10ms (Ultra-fast checks)
+
+class SystemKernel:
+    """Low-level OS manipulations for maximum performance"""
+    
+    @staticmethod
+    def boost_process_priority():
+        """Force High Priority to steal CPU cycles"""
         try:
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            procs.append((p, method_name))
-            # Poll until either file exists or process exits
-            start = time.time()
-            while time.time() - start < timeout_secs and not finished.is_set():
-                if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-                    result['success'] = True
-                    result['method'] = method_name
-                    finished.set()
-                    break
-                if p.poll() is not None:
-                    # Process ended; check exit code and output file
-                    if p.returncode == 0 and os.path.exists(output_path):
-                        result['success'] = True
-                        result['method'] = method_name
-                        # Capture stderr for diagnostics
-                        try:
-                            _, stderr = p.communicate(timeout=0.1)
-                            result['stderr'] += stderr.decode(errors='ignore')
-                        except:
-                            pass
-                        finished.set()
-                        break
-                    else:
-                        # collect stderr for diagnostics
-                        try:
-                            _, stderr = p.communicate(timeout=0.1)
-                            result['stderr'] += f"[{method_name}] " + stderr.decode(errors='ignore') + "\n"
-                        except:
-                            pass
-                        return
-                time.sleep(0.2)
-        except Exception as e:
-            result['stderr'] += f"[{method_name}] Exception: {str(e)}\n"
+            if os.name == 'nt': # Fast Windows check
+                import ctypes
+                # HIGH_PRIORITY_CLASS (0x00000080)
+                ctypes.windll.kernel32.SetPriorityClass(
+                    ctypes.windll.kernel32.GetCurrentProcess(), 0x00000080)
+            else:
+                os.nice(-10) # Linux/Mac High Priority
+        except:
+            pass 
 
-    threads = []
-    for cmd, name in commands:
-        t = threading.Thread(target=runner, args=(cmd, name), daemon=True)
-        threads.append(t)
-        t.start()
+    @staticmethod
+    def get_fast_libreoffice_cmd(input_path, output_dir):
+        """Generates the optimized command with RAM-disk profile"""
+        # Lazy imports for speed
+        import tempfile
+        import uuid
+        
+        profile_dir = os.path.join(tempfile.gettempdir(), f"LO_{uuid.uuid4().hex[:8]}")
+        
+        if os.name == 'nt':
+            from urllib.request import pathname2url
+            uri = f"file:///{pathname2url(profile_dir)}"
+            exe = 'soffice'
+        else:
+            uri = f"file://{profile_dir}"
+            exe = 'libreoffice'
 
-    finished.wait(timeout_secs)
+        cmd = [
+            exe,
+            f'-env:UserInstallation={uri}', 
+            '--headless',
+            '--nologo',       
+            '--nodefault',    
+            '--norestore',    
+            '--writer',
+            '--convert-to', 'pdf',
+            '--outdir', output_dir,
+            input_path
+        ]
+        return cmd, profile_dir
 
-    # Cleanup: terminate all subprocesses still running
-    for p, name in procs:
+class ConversionRacer(threading.Thread):
+    def __init__(self, name, target_func, args, success_event, result_holder):
+        super().__init__(daemon=True)
+        self.name = name
+        self.target_func = target_func
+        self.args = args
+        self.success_event = success_event
+        self.result_holder = result_holder
+        self.process = None 
+
+    def run(self):
         try:
-            if p.poll() is None:
-                p.terminate()
-                try:
-                    p.wait(timeout=1)
-                except:
-                    p.kill()
+            self.target_func(self)
         except Exception:
             pass
 
-    return result
+class EngineLogic:
+    @staticmethod
+    def run_subprocess(racer_obj):
+        cmd = racer_obj.args['cmd']
+        output_path = racer_obj.args['output_path']
+        
+        startupinfo = None
+        if os.name == 'nt':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            
+        racer_obj.process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            startupinfo=startupinfo
+        )
+        
+        # Micro-polling loop
+        while racer_obj.process.poll() is None:
+            if racer_obj.success_event.is_set():
+                racer_obj.process.terminate()
+                return
+            time.sleep(POLL_INTERVAL)
+            
+        # Post-process check
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 100:
+            if not racer_obj.success_event.is_set():
+                racer_obj.result_holder['winner'] = racer_obj.name
+                racer_obj.success_event.set()
 
-
-def convert_windows(input_path, output_path):
-    """Windows: Try Word COM, then race LibreOffice+Pandoc (fast fallbacks)"""
-    file_size = get_file_size_mb(input_path)
-    log(f"Windows Mode: File size = {file_size:.2f}MB")
-
-    # Method 1: Microsoft Word COM (fastest, best quality) - for DOCX/DOC
-    try:
-        log("Status: Attempting Microsoft Word COM conversion (fastest)...")
+    @staticmethod
+    def run_com_automation(racer_obj):
+        if os.name != 'nt': return
+        
+        input_path = racer_obj.args['input_path']
+        output_path = racer_obj.args['output_path']
+        
+        # Lazy import COM libraries only inside the thread
         import pythoncom
-        from win32com import client
+        import win32com.client
+        
         pythoncom.CoInitialize()
-
-        word = client.Dispatch("Word.Application")
-        word.Visible = False
-
-        # Open, convert, save as PDF
-        doc = word.Documents.Open(os.path.abspath(input_path))
-        doc.SaveAs(os.path.abspath(output_path), FileFormat=17)  # 17 = PDF
-        doc.Close()
-        word.Quit()
-
-        if os.path.exists(output_path):
-            log("Status: Word COM conversion successful")
-            return True
-    except Exception as e:
-        log(f"Word COM Error: {str(e)}")
-
-    # If COM isn't available, try a parallel race between LibreOffice and Pandoc to reduce total latency
-    try:
-        log('Status: Word COM not available or failed. Racing LibreOffice and Pandoc (timeout set to WORD_CONVERT_TIMEOUT environ var).')
-        timeout_secs = int(os.environ.get('WORD_CONVERT_TIMEOUT', '9'))
-        output_dir = os.path.dirname(output_path) or '.'
-
-        commands = [
-            (['unoconv', '-f', 'pdf', '-o', output_path, input_path], 'unoconv'),
-            (['soffice', '--headless', '--norestore', '--convert-to', 'pdf', '--outdir', output_dir, input_path], 'libreoffice'),
-            (['pandoc', input_path, '-o', output_path, '--pdf-engine=wkhtmltopdf'], 'pandoc')
-        ]
-
-        res = run_command_race(commands, output_path, timeout_secs=timeout_secs)
-        if res['success']:
-            log(f"Status: Conversion finished by {res['method']} within {timeout_secs}s")
-            return True
-        else:
-            log('Windows: All parallel attempts failed or timed out.')
-            log(res['stderr'][:1000])
-    except Exception as e:
-        log(f"Race Error: {str(e)}")
-
-    # Final fallback: Python native (slower but sometimes quick for small docs)
-    try:
-        log("Status: Attempting Python native conversion as last-resort...")
-        from docx import Document as DocxDocument
-        from reportlab.lib.pagesizes import letter
-        from reportlab.pdfgen import canvas
-
-        doc = DocxDocument(input_path)
-        c = canvas.Canvas(output_path, pagesize=letter)
-
-        for para in doc.paragraphs:
-            if para.text.strip():
-                c.drawString(50, 750, para.text[:100])
-                c.showPage()
-
-        c.save()
-        log("Status: Python native conversion successful")
-        return True
-    except Exception as e:
-        log(f"Python native Error: {str(e)}")
-
-    return False
-
-
-def convert_linux(input_path, output_path):
-    """Linux: Race LibreOffice and Pandoc to reduce latency"""
-    file_size = get_file_size_mb(input_path)
-    log(f"Linux Mode: File size = {file_size:.2f}MB")
-
-    timeout_secs = int(os.environ.get('WORD_CONVERT_TIMEOUT', '9'))
-    output_dir = os.path.dirname(output_path) or '.'
-
-    commands = [
-        (['libreoffice', '--headless', '--norestore', '--convert-to', 'pdf', '--outdir', output_dir, input_path], 'libreoffice'),
-        (['soffice', '--headless', '--norestore', '--convert-to', 'pdf', '--outdir', output_dir, input_path], 'soffice'),
-        (['pandoc', input_path, '-o', output_path, '--pdf-engine=wkhtmltopdf'], 'pandoc')
-    ]
-
-    res = run_command_race(commands, output_path, timeout_secs=timeout_secs)
-    if res['success']:
-        log(f"Status: Conversion finished by {res['method']} within {timeout_secs}s")
-        return True
-    else:
-        log('Linux: All parallel attempts failed or timed out.')
-        log(res['stderr'][:1000])
-
-    # Fallback: unoconv
-    try:
-        log('Status: Attempting unoconv (fallback)...')
-        process = subprocess.run(['unoconv', '-f', 'pdf', '-o', output_path, input_path], capture_output=True, text=True, timeout=timeout_secs)
-        if process.returncode == 0 and os.path.exists(output_path):
-            log('Status: unoconv conversion successful')
-            return True
-    except subprocess.TimeoutExpired:
-        log('unoconv: Timeout')
-    except Exception as e:
-        log(f'unoconv error: {str(e)}')
-
-    return False
-
-
-def convert_macos(input_path, output_path):
-    """macOS: Race LibreOffice and Pandoc, fallback to native where possible"""
-    file_size = get_file_size_mb(input_path)
-    log(f"macOS Mode: File size = {file_size:.2f}MB")
-
-    timeout_secs = int(os.environ.get('WORD_CONVERT_TIMEOUT', '9'))
-    output_dir = os.path.dirname(output_path) or '.'
-
-    commands = [
-        (['libreoffice', '--headless', '--norestore', '--convert-to', 'pdf', '--outdir', output_dir, input_path], 'libreoffice'),
-        (['soffice', '--headless', '--norestore', '--convert-to', 'pdf', '--outdir', output_dir, input_path], 'soffice'),
-        (['pandoc', input_path, '-o', output_path, '--pdf-engine=wkhtmltopdf'], 'pandoc')
-    ]
-
-    res = run_command_race(commands, output_path, timeout_secs=timeout_secs)
-    if res['success']:
-        log(f"Status: Conversion finished by {res['method']} within {timeout_secs}s")
-        return True
-    else:
-        log('macOS: All parallel attempts failed or timed out.')
-        log(res['stderr'][:1000])
-
-    # macOS native (cupsfilter)
-    try:
-        log('Status: Attempting macOS native PDF conversion (cupsfilter)…')
-        process = subprocess.run(['cupsfilter', '-m', 'application/pdf', input_path], capture_output=True, timeout=timeout_secs)
-        if process.returncode == 0:
-            with open(output_path, 'wb') as f:
-                f.write(process.stdout)
-            log('Status: macOS native PDF conversion successful')
-            return True
-    except Exception as e:
-        log(f'macOS native error: {str(e)}')
-
-    return False
-
-def convert_linux(input_path, output_path):
-    """Linux: Primary - LibreOffice, Secondary - Pandoc, Tertiary - unoconv"""
-    file_size = get_file_size_mb(input_path)
-    log(f"Linux Mode: File size = {file_size:.2f}MB")
-    
-    output_dir = os.path.dirname(output_path) or "."
-    
-    # Method 1: LibreOffice Headless (primary)
-    for cmd in ['libreoffice', 'soffice']:
+        
         try:
-            log(f"Status: Attempting {cmd} conversion...")
-            process = subprocess.run([
-                cmd,
-                '--headless',
-                '--norestore',
-                '--convert-to', 'pdf',
-                '--outdir', output_dir,
-                input_path
-            ], capture_output=True, text=True, timeout=60)
+            try:
+                word = win32com.client.GetActiveObject("Word.Application")
+            except:
+                word = win32com.client.Dispatch("Word.Application")
+                word.Visible = False
+                word.DisplayAlerts = False
+                # SPEED TWEAK: Disable background tasks
+                word.Options.CheckSpellingAsYouType = False
+                word.Options.CheckGrammarAsYouType = False
+                word.Options.Pagination = False
+                word.ScreenUpdating = False
             
-            if process.returncode == 0 or os.path.exists(output_path):
-                log(f"Status: {cmd} conversion successful")
-                return True
-        except subprocess.TimeoutExpired:
-            log(f"{cmd}: Timeout (>60s)")
-        except:
-            continue
-    
-    # Method 2: Pandoc (fallback)
-    try:
-        log("Status: Attempting Pandoc conversion...")
-        process = subprocess.run([
-            'pandoc',
-            input_path,
-            '-o', output_path,
-            '--pdf-engine=wkhtmltopdf'
-        ], capture_output=True, text=True, timeout=30)
-        
-        if process.returncode == 0 or os.path.exists(output_path):
-            log("Status: Pandoc conversion successful")
-            return True
-    except subprocess.TimeoutExpired:
-        log("Pandoc: Timeout (>30s)")
-    except Exception as e:
-        log(f"Pandoc Error: {str(e)}")
-    
-    # Method 3: unoconv (LibreOffice bridge)
-    try:
-        log("Status: Attempting unoconv conversion...")
-        process = subprocess.run([
-            'unoconv',
-            '-f', 'pdf',
-            '-o', output_path,
-            input_path
-        ], capture_output=True, text=True, timeout=60)
-        
-        if process.returncode == 0 or os.path.exists(output_path):
-            log("Status: unoconv conversion successful")
-            return True
-    except:
-        pass
-    
-    return False
-
-def convert_macos(input_path, output_path):
-    """macOS: Primary - LibreOffice, Secondary - Pandoc, Tertiary - native PDF"""
-    file_size = get_file_size_mb(input_path)
-    log(f"macOS Mode: File size = {file_size:.2f}MB")
-    
-    output_dir = os.path.dirname(output_path) or "."
-    
-    # Method 1: LibreOffice via brew/native
-    for cmd in ['libreoffice', 'soffice']:
-        try:
-            log(f"Status: Attempting {cmd} conversion...")
-            process = subprocess.run([
-                cmd,
-                '--headless',
-                '--norestore',
-                '--convert-to', 'pdf',
-                '--outdir', output_dir,
-                input_path
-            ], capture_output=True, text=True, timeout=60)
+            # Open Read-Only for speed
+            doc = word.Documents.Open(input_path, ReadOnly=True, Visible=False)
+            doc.SaveAs(output_path, FileFormat=17) # 17 = PDF
+            doc.Close(SaveChanges=False)
             
-            if process.returncode == 0 or os.path.exists(output_path):
-                log(f"Status: {cmd} conversion successful")
-                return True
+            if os.path.exists(output_path) and os.path.getsize(output_path) > 100:
+                if not racer_obj.success_event.is_set():
+                    racer_obj.result_holder['winner'] = "Word-COM"
+                    racer_obj.success_event.set()
         except:
-            continue
-    
-    # Method 2: Pandoc
-    try:
-        log("Status: Attempting Pandoc conversion...")
-        process = subprocess.run([
-            'pandoc',
-            input_path,
-            '-o', output_path,
-            '--pdf-engine=wkhtmltopdf'
-        ], capture_output=True, text=True, timeout=30)
-        
-        if process.returncode == 0 or os.path.exists(output_path):
-            log("Status: Pandoc conversion successful")
-            return True
-    except:
-        pass
-    
-    # Method 3: macOS native PDF rendering via cups
-    try:
-        log("Status: Attempting macOS native PDF conversion...")
-        process = subprocess.run([
-            'cupsfilter',
-            '-m', 'application/pdf',
-            input_path
-        ], capture_output=True, timeout=30)
-        
-        if process.returncode == 0:
-            with open(output_path, 'wb') as f:
-                f.write(process.stdout)
-            log("Status: macOS native PDF conversion successful")
-            return True
-    except:
-        pass
-    
-    return False
+            pass
+        finally:
+            pythoncom.CoUninitialize()
 
 def main():
+    # 1. Start Clock & Boost Priority immediately
+    start_time = time.time()
+    SystemKernel.boost_process_priority()
+    
     if len(sys.argv) < 3:
-        log("Error: Missing input and output paths")
         sys.exit(1)
-
+        
     input_path = os.path.abspath(sys.argv[1])
     output_path = os.path.abspath(sys.argv[2])
-    
-    # Validate input
-    if not os.path.exists(input_path):
-        log(f"Critical Error: Input file not found - {input_path}")
-        sys.exit(1)
-    
-    if os.path.getsize(input_path) == 0:
-        log("Critical Error: Input file is empty")
-        sys.exit(1)
-    
-    # Detect format
-    file_format = detect_input_format(input_path)
-    file_size = get_file_size_mb(input_path)
-    log(f"Process: Detected format={file_format}, size={file_size:.2f}MB")
-    
-    current_os = platform.system()
-    log(f"Process: Environment={current_os}, CPU cores={os.cpu_count()}")
+    output_dir = os.path.dirname(output_path)
 
-    start_time = time.time()
-    success = False
-    
-    if current_os == "Windows":
-        success = convert_windows(input_path, output_path)
-    elif current_os == "Darwin":
-        success = convert_macos(input_path, output_path)
-    else:
-        success = convert_linux(input_path, output_path)
+    # 2. Prepare Racers
+    success_event = threading.Event()
+    result = {'winner': None}
+    threads = []
+    temp_dirs_to_clean = []
 
-    if success:
-        if os.path.exists(output_path):
-            output_size = get_file_size_mb(output_path)
-            elapsed = time.time() - start_time
-            compression = ((1 - output_size / file_size) * 100) if file_size > 0 else 0
-            log(f"Status: Output={output_size:.2f}MB, compressed by {compression:.1f}%")
-            log(f"Timing: Conversion completed in {elapsed:.2f}s")
-            log("Success: Conversion completed successfully.")
+    # RACER 1: Windows Native COM (Optimized)
+    if os.name == 'nt':
+        t = ConversionRacer(
+            "Word-COM", 
+            EngineLogic.run_com_automation, 
+            {'input_path': input_path, 'output_path': output_path},
+            success_event, result
+        )
+        threads.append(t)
+
+    # RACER 2: LibreOffice (Profile Optimized)
+    lo_cmd, lo_profile = SystemKernel.get_fast_libreoffice_cmd(input_path, output_dir)
+    temp_dirs_to_clean.append(lo_profile)
+    
+    t = ConversionRacer(
+        "LibreOffice",
+        EngineLogic.run_subprocess,
+        {'cmd': lo_cmd, 'output_path': output_path}, 
+        success_event, result
+    )
+    threads.append(t)
+
+    # RACER 3: Pandoc (Fallback)
+    t = ConversionRacer(
+        "Pandoc",
+        EngineLogic.run_subprocess,
+        {'cmd': ['pandoc', input_path, '-o', output_path, '--pdf-engine=wkhtmltopdf'], 'output_path': output_path},
+        success_event, result
+    )
+    threads.append(t)
+
+    # 3. Start Race
+    print(f"Status: Racing {len(threads)} engines...")
+    sys.stdout.flush()
+    
+    for t in threads: t.start()
+
+    # 4. Wait for Winner
+    final_duration = 0
+    lo_default_name = os.path.splitext(os.path.basename(input_path))[0] + ".pdf"
+    lo_default_path = os.path.join(output_dir, lo_default_name)
+
+    while not success_event.is_set():
+        if time.time() - start_time > TIMEOUT_SECONDS:
+            break
+        
+        # Check for LibreOffice misnamed file (Common LO quirk)
+        if os.path.exists(lo_default_path):
+            # Double check size to ensure write is done
+            if os.path.getsize(lo_default_path) > 100:
+                try:
+                    if os.path.exists(output_path): os.remove(output_path)
+                    os.rename(lo_default_path, output_path)
+                    result['winner'] = "LibreOffice-Detected"
+                    success_event.set()
+                except: pass
+            
+        time.sleep(POLL_INTERVAL)
+
+    # 5. Capture Finish Time
+    if success_event.is_set():
+        final_duration = time.time() - start_time
+
+    # 6. Aggressive Cleanup
+    # Kill threads first
+    for t in threads:
+        if t.process:
+            try: t.process.kill() 
+            except: pass
+    
+    # Lazy import shutil only for cleanup
+    import shutil
+    if os.name == 'nt': time.sleep(0.1)
+    for path in temp_dirs_to_clean:
+        try: shutil.rmtree(path, ignore_errors=True)
+        except: pass
+
+    # 7. Final Output
+    if success_event.is_set() and os.path.exists(output_path):
+        print(f"Success: {result['winner']} won in {final_duration:.4f}s")
         sys.exit(0)
     else:
-        log("Error: All conversion engines failed. Try uploading a different file format.")
+        print("Error: Conversion Timed Out")
         sys.exit(1)
 
 if __name__ == "__main__":
