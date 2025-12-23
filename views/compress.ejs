@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OmniGrid NX | Ultra PDF Compressor</title>
+    <title>OmniGrid NX | Universal File Compressor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -22,14 +22,17 @@
         .glass-feature:hover { background: white; transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(139, 92, 246, 0.1); }
         .shape { position: absolute; background: var(--nx-purple); filter: blur(100px); opacity: 0.08; z-index: -1; border-radius: 50%; animation: float 25s infinite alternate; }
         @keyframes float { 0% { transform: translate(0, 0) rotate(0deg); } 100% { transform: translate(150px, 100px) rotate(15deg); } }
-        .compress-option { border: 2px solid #f1f5f9; transition: all 0.2s ease; }
-        .compress-option.active { border-color: var(--nx-purple); background-color: #f5f3ff; }
+        .file-type-card { transition: all 0.3s ease; cursor: pointer; }
+        .file-type-card:hover { border-color: currentColor; box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.1); }
+        .file-type-card.ring-2 { transform: scale(1.02); }
         .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e2e8f0; transition: .4s; border-radius: 34px; }
         .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--nx-purple); }
         input:checked + .slider:before { transform: translateX(20px); }
+        .btn-level { transition: all 0.3s ease; }
+        .btn-level.active { background-color: rgb(243, 232, 255); border-color: var(--nx-purple); }
     </style>
 </head>
 <body class="antialiased">
@@ -56,18 +59,18 @@
             
             <div class="lg:w-1/2 animate-hero">
                 <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 border border-purple-100 mb-6">
-                    <span class="text-[10px] font-bold text-purple-700 uppercase tracking-widest">v4.0 Compression Engine</span>
+                    <span class="text-[10px] font-bold text-purple-700 uppercase tracking-widest">v5.0 Universal Compression</span>
                 </div>
                 <h1 class="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8">
-                    Smart <span class="text-purple-600">Shrink</span> <br>Engine.
+                    Smart <span class="text-purple-600">Shrink</span> <br>Any File.
                 </h1>
                 <p class="text-lg text-slate-500 font-medium mb-10 max-w-lg leading-relaxed">
-                    Optimize PDF files with surgical precision. Our engine strips bloat while protecting the integrity of your text and vectors.
+                    Compress PDF, DOCX, Images and more with surgical precision. Our multi-format engine strips bloat while protecting quality and integrity.
                 </p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
                         <div class="w-10 h-10 rounded-xl bg-purple-600/10 flex items-center justify-center shrink-0"><i class="fas fa-microchip text-purple-600"></i></div>
-                        <div><h4 class="font-bold text-sm">Lossless Logic</h4><p class="text-xs text-slate-400 mt-1">Strips metadata, keeps pixels.</p></div>
+                        <div><h4 class="font-bold text-sm">Smart Shrinking</h4><p class="text-xs text-slate-400 mt-1">Format-aware compression.</p></div>
                     </div>
                     <div class="glass-feature p-5 rounded-2xl flex items-start gap-4">
                         <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center shrink-0"><i class="fas fa-gauge-high text-blue-600"></i></div>
@@ -78,76 +81,120 @@
 
             <div class="lg:w-1/2 w-full animate-card">
                 <div class="bg-white p-3 rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(139,92,246,0.15)] border border-slate-50 relative overflow-hidden">
-                    <div id="drop-zone" class="bg-slate-50 rounded-[2.6rem] py-16 px-8 text-center border-2 border-dashed border-slate-200 transition-all cursor-pointer hover:border-purple-400 group">
-                        <input type="file" id="fileInput" class="hidden" accept=".pdf">
+                    <div id="main-container" class="bg-slate-50 rounded-[2.6rem] py-16 px-8 text-center border-2 border-slate-100 transition-all">
                         
-                        <div id="idle-ui">
-                            <div class="relative w-24 h-24 mx-auto mb-8">
-                                <div class="absolute inset-0 bg-purple-600 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                                <div class="relative w-full h-full bg-white rounded-3xl shadow-sm flex items-center justify-center border border-slate-100">
-                                    <i class="fas fa-minimize text-purple-600 text-3xl"></i>
+                        <!-- STEP 1: SELECT FILE TYPE -->
+                        <div id="step-select" class="space-y-6">
+                            <h3 class="text-2xl font-black mb-1">Choose a File Type</h3>
+                            <p class="text-xs text-slate-500 mb-8">Select what you want to compress</p>
+
+                            <div id="type-pdf" onclick="selectFileType('pdf')" class="file-type-card p-6 bg-white rounded-2xl border-2 border-slate-100 text-left group">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <p class="text-lg font-black text-slate-800"><i class="fas fa-file-pdf text-red-600 mr-2"></i>PDF Document</p>
+                                        <p class="text-xs text-slate-500 mt-2">Optimize with image compression</p>
+                                    </div>
+                                    <i class="fas fa-check-circle text-transparent group-hover:text-red-600 text-2xl transition-colors"></i>
                                 </div>
                             </div>
-                            <h3 class="text-2xl font-black mb-2">Compress PDF</h3>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-10">Select file to begin</p>
-                            <button onclick="document.getElementById('fileInput').click()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] shadow-xl hover:bg-purple-600 transition-all">
-                                SELECT PDF FILE
-                            </button>
+
+                            <div id="type-docx" onclick="selectFileType('docx')" class="file-type-card p-6 bg-white rounded-2xl border-2 border-slate-100 text-left group">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <p class="text-lg font-black text-slate-800"><i class="fas fa-file-word text-blue-600 mr-2"></i>Word Document</p>
+                                        <p class="text-xs text-slate-500 mt-2">Remove unused styles & fonts</p>
+                                    </div>
+                                    <i class="fas fa-check-circle text-transparent group-hover:text-blue-600 text-2xl transition-colors"></i>
+                                </div>
+                            </div>
+
+                            <div id="type-image" onclick="selectFileType('image')" class="file-type-card p-6 bg-white rounded-2xl border-2 border-slate-100 text-left group">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <p class="text-lg font-black text-slate-800"><i class="fas fa-file-image text-purple-600 mr-2"></i>Image File</p>
+                                        <p class="text-xs text-slate-500 mt-2">Compress JPG, PNG, GIF & more</p>
+                                    </div>
+                                    <i class="fas fa-check-circle text-transparent group-hover:text-purple-600 text-2xl transition-colors"></i>
+                                </div>
+                            </div>
                         </div>
 
-                        <div id="settings-ui" class="hidden text-left animate-hero">
-                            <div class="flex items-center gap-4 mb-8 p-4 bg-white rounded-2xl border border-slate-100">
-                                <div class="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600"><i class="fas fa-file-pdf"></i></div>
-                                <div class="overflow-hidden">
+                        <!-- STEP 2: UPLOAD FILE -->
+                        <div id="step-upload" class="hidden space-y-6">
+                            <button onclick="goBack()" class="mb-4 p-2 hover:bg-white rounded-lg transition-colors inline-block">
+                                <i class="fas fa-arrow-left text-slate-600"></i>
+                            </button>
+                            <h3 class="text-2xl font-black mb-1">Upload Your File</h3>
+                            <p class="text-xs text-slate-500 mb-8">Select the file you want to compress</p>
+
+                            <input type="file" id="fileInput" style="display: none;">
+                            
+                            <div onclick="triggerFileInput()" class="drop-area bg-white rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all">
+                                <p class="text-4xl text-slate-300 mb-3"><i class="fas fa-cloud-arrow-up"></i></p>
+                                <p class="font-black text-slate-800">Click or drag to upload</p>
+                                <p class="text-xs text-slate-400 mt-1">Select the file you want to compress</p>
+                            </div>
+                        </div>
+
+                        <!-- STEP 3: CONFIGURE OPTIONS -->
+                        <div id="step-configure" class="hidden space-y-6 text-left">
+                            <button onclick="goBack()" class="mb-4 p-2 hover:bg-white rounded-lg transition-colors inline-block">
+                                <i class="fas fa-arrow-left text-slate-600"></i>
+                            </button>
+                            <h3 class="text-2xl font-black mb-1">Compression Settings</h3>
+                            <p class="text-xs text-slate-500 mb-6">Configure how to compress your file</p>
+
+                            <!-- File Info -->
+                            <div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100">
+                                <div id="file-info-icon" class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"></div>
+                                <div class="overflow-hidden flex-1">
                                     <p id="file-name" class="font-bold text-sm text-slate-800 truncate">document.pdf</p>
                                     <p id="file-size-display" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">0.0 MB</p>
                                 </div>
                             </div>
-                            <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Compression Strategy</h4>
-                            <div class="grid grid-cols-2 gap-3 mb-8">
-                                <div id="lvl-extreme" onclick="selectLevel('extreme')" class="compress-option p-4 rounded-2xl cursor-pointer bg-white">
-                                    <p class="font-black text-[10px] text-slate-800 uppercase">Extreme</p>
-                                    <p class="text-[9px] text-slate-400 mt-1">Min Quality</p>
-                                </div>
-                                <div id="lvl-recommended" onclick="selectLevel('recommended')" class="compress-option active p-4 rounded-2xl cursor-pointer bg-white">
-                                    <p class="font-black text-[10px] text-slate-800 uppercase">Balanced</p>
-                                    <p class="text-[9px] text-slate-400 mt-1">High Quality</p>
+
+                            <!-- Format-Specific Options -->
+                            <div id="options-section" class="bg-white rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-slate-600 mb-4">Options</p>
+                                <div id="options-container" class="space-y-3"></div>
+                            </div>
+
+                            <!-- Compression Level -->
+                            <div class="bg-white rounded-xl border border-slate-100 p-4">
+                                <p class="text-xs font-bold text-slate-600 mb-3">Compression Level</p>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button id="lvl-recommended" class="active btn-level p-3 rounded-lg bg-purple-50 border border-purple-300 text-xs font-bold text-purple-700" onclick="selectLevel('recommended')">
+                                        <i class="fas fa-leaf"></i> Recommended
+                                    </button>
+                                    <button id="lvl-extreme" class="btn-level p-3 rounded-lg bg-slate-50 border border-slate-300 text-xs font-bold text-slate-700" onclick="selectLevel('extreme')">
+                                        <i class="fas fa-rocket"></i> Extreme
+                                    </button>
                                 </div>
                             </div>
-                            <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Advanced Toggles</h4>
-                            <div class="space-y-4 mb-10">
-                                <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-50">
-                                    <span class="text-xs font-bold text-slate-600">Convert to Grayscale</span>
-                                    <label class="switch"><input type="checkbox" id="toggle-gray"><span class="slider"></span></label>
-                                </div>
-                                <div class="bg-white p-3 rounded-xl border border-slate-50">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span class="text-xs font-bold text-slate-600">Max Image DPI</span>
-                                        <span id="dpi-val" class="text-[10px] font-black text-purple-600">150 DPI</span>
-                                    </div>
-                                    <input type="range" id="dpi-range" min="72" max="300" value="150" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-purple-600">
-                                </div>
-                            </div>
-                            <button onclick="startCompression()" class="w-full bg-purple-600 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] shadow-xl hover:bg-purple-700 transition-all flex items-center justify-center gap-3">
-                                <i class="fas fa-bolt"></i> OPTIMIZE NOW
+
+                            <!-- Compress Button -->
+                            <button onclick="startCompression()" class="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white font-black py-4 rounded-xl hover:shadow-lg transition-all">
+                                <i class="fas fa-zap"></i> Compress Now
                             </button>
                         </div>
 
-                        <div id="processing-ui" class="hidden">
-                            <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-8"></div>
+                        <!-- PROCESSING -->
+                        <div id="processing-ui" class="hidden space-y-4">
+                            <div class="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
                             <h3 id="status-text" class="text-xl font-extrabold text-slate-800 italic">Starting...</h3>
                             <div class="progress-container">
                                 <div class="progress-bar" id="p-bar"></div>
                             </div>
                         </div>
 
-                        <div id="complete-ui" class="hidden">
-                            <div class="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-100">
+                        <!-- COMPLETE -->
+                        <div id="complete-ui" class="hidden space-y-4">
+                            <div class="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-100">
                                 <i class="fas fa-check text-xl"></i>
                             </div>
-                            <h3 class="text-2xl font-black mb-6">Shrink Success!</h3>
+                            <h3 class="text-2xl font-black">Success! File Compressed</h3>
                             
-                            <div class="grid grid-cols-2 gap-3 mb-8">
+                            <div class="grid grid-cols-2 gap-3">
                                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                     <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Original</p>
                                     <p id="stat-orig" class="font-black text-slate-800 text-sm">0 MB</p>
@@ -165,12 +212,13 @@
                             </div>
 
                             <div class="space-y-3">
-                                <button id="downloadBtn" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs tracking-[0.2em] shadow-lg hover:bg-blue-600 transition-all">
-                                    <i class="fas fa-download mr-2"></i> DOWNLOAD PDF
+                                <button id="downloadBtn" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs tracking-[0.1em] shadow-lg hover:bg-blue-600 transition-all">
+                                    <i class="fas fa-download"></i> DOWNLOAD FILE
                                 </button>
                                 <button onclick="location.reload()" class="text-xs font-bold text-slate-400 hover:text-slate-900 transition underline underline-offset-4">Compress another file</button>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -182,6 +230,40 @@
         let socketId = "";
         let selectedFile = null;
         let selectedLevel = 'recommended';
+        let selectedFileType = null;
+
+        const fileTypeConfig = {
+            pdf: {
+                name: "PDF Document",
+                icon: "fa-file-pdf",
+                color: "text-red-600",
+                bgColor: "bg-red-50",
+                accepts: ".pdf",
+                description: "Compress PDF files with image optimization",
+                options: {
+                    grayscale: { label: "Convert to Grayscale", default: false },
+                    dpi: { label: "Max Image DPI", min: 72, max: 300, default: 150 }
+                }
+            },
+            docx: {
+                name: "Word Document",
+                icon: "fa-file-word",
+                color: "text-blue-600",
+                bgColor: "bg-blue-50",
+                accepts: ".docx,.doc",
+                description: "Remove unused styles, fonts, and revision history",
+                options: {}
+            },
+            image: {
+                name: "Image File",
+                icon: "fa-file-image",
+                color: "text-purple-600",
+                bgColor: "bg-purple-50",
+                accepts: ".jpg,.jpeg,.png,.gif,.bmp,.webp",
+                description: "Compress JPG, PNG, GIF, BMP, or WebP images",
+                options: {}
+            }
+        };
 
         socket.on('connect', () => { socketId = socket.id; });
 
@@ -196,9 +278,8 @@
         socket.on('conversion-finished', (data) => {
             document.getElementById('p-bar').style.width = "100%";
             
-            // Calculate and Show Analytics
             const origSize = selectedFile.size;
-            const newSize = data.fileSize || (origSize * (selectedLevel === 'extreme' ? 0.3 : 0.6)); // Fallback if server doesn't send size
+            const newSize = data.fileSize || (origSize * (selectedLevel === 'extreme' ? 0.3 : 0.6));
             const savings = Math.round(((origSize - newSize) / origSize) * 100);
 
             document.getElementById('stat-orig').innerText = (origSize / (1024 * 1024)).toFixed(2) + " MB";
@@ -212,18 +293,105 @@
             }, 600);
         });
 
+        socket.on('conversion-error', (msg) => {
+            alert("Error: " + msg);
+            location.reload();
+        });
+
+        // Step 1: Choose File Type
+        function selectFileType(type) {
+            selectedFileType = type;
+            selectedFile = null;
+            
+            // Update UI to show selected type
+            document.querySelectorAll('.file-type-card').forEach(card => {
+                card.classList.remove('ring-2', 'ring-purple-500', 'scale-105');
+            });
+            document.getElementById(`type-${type}`).classList.add('ring-2', 'ring-purple-500', 'scale-105');
+            
+            // Show upload area
+            showStep('upload');
+        }
+
+        // Step 2: Upload File
+        const fileInput = document.getElementById('fileInput');
         fileInput.onchange = (e) => {
-            if(e.target.files.length) {
+            if (e.target.files.length) {
                 selectedFile = e.target.files[0];
                 document.getElementById('file-name').innerText = selectedFile.name;
                 document.getElementById('file-size-display').innerText = (selectedFile.size / (1024 * 1024)).toFixed(2) + ' MB';
-                document.getElementById('idle-ui').classList.add('hidden');
-                document.getElementById('settings-ui').classList.remove('hidden');
+                document.getElementById('file-info-icon').className = `fas ${fileTypeConfig[selectedFileType].icon} ${fileTypeConfig[selectedFileType].color}`;
+                
+                // Show configuration step
+                showStep('configure');
             }
         };
 
-        const dpiRange = document.getElementById('dpi-range');
-        dpiRange.oninput = function() { document.getElementById('dpi-val').innerText = this.value + ' DPI'; }
+        function triggerFileInput() {
+            fileInput.accept = fileTypeConfig[selectedFileType].accepts;
+            fileInput.click();
+        }
+
+        // Step 3: Configure Options
+        function updateConfigUI() {
+            const optionsContainer = document.getElementById('options-container');
+            const config = fileTypeConfig[selectedFileType];
+            
+            let html = '';
+            for (const [key, option] of Object.entries(config.options)) {
+                if (key === 'grayscale') {
+                    html += `
+                        <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-50">
+                            <span class="text-xs font-bold text-slate-600">${option.label}</span>
+                            <label class="switch">
+                                <input type="checkbox" id="${key}">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    `;
+                } else if (key === 'dpi') {
+                    html += `
+                        <div class="bg-white p-4 rounded-xl border border-slate-50">
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-xs font-bold text-slate-600">${option.label}</span>
+                                <span id="dpi-display" class="text-[10px] font-black text-purple-600">${option.default} DPI</span>
+                            </div>
+                            <input type="range" id="${key}" min="${option.min}" max="${option.max}" value="${option.default}" 
+                                   class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                   oninput="document.getElementById('dpi-display').innerText = this.value + ' DPI'">
+                        </div>
+                    `;
+                }
+            }
+            
+            optionsContainer.innerHTML = html || '<p class="text-center text-slate-400 text-xs">No additional options for this file type</p>';
+        }
+
+        // UI Flow Management
+        function showStep(step) {
+            document.getElementById('step-select').classList.add('hidden');
+            document.getElementById('step-upload').classList.add('hidden');
+            document.getElementById('step-configure').classList.add('hidden');
+            
+            if (step === 'select') {
+                document.getElementById('step-select').classList.remove('hidden');
+            } else if (step === 'upload') {
+                document.getElementById('step-upload').classList.remove('hidden');
+            } else if (step === 'configure') {
+                updateConfigUI();
+                document.getElementById('step-configure').classList.remove('hidden');
+            }
+        }
+
+        function goBack() {
+            if (selectedFile) {
+                selectedFile = null;
+                showStep('upload');
+            } else {
+                selectedFileType = null;
+                showStep('select');
+            }
+        }
 
         function selectLevel(level) {
             selectedLevel = level;
@@ -233,25 +401,33 @@
 
         async function startCompression() {
             if (!socket.connected) return alert("Establishing socket connection...");
+            if (!selectedFile || !selectedFileType) return alert("Please select and upload a file first");
             
-            document.getElementById('settings-ui').classList.add('hidden');
-            document.getElementById('processing-ui').classList.remove('hidden');
-            document.getElementById('p-bar').style.width = "10%";
+            showStep('processing');
 
             const formData = new FormData();
-            formData.append("pdf", selectedFile);
+            formData.append("file", selectedFile);
             formData.append("socketId", socketId);
             formData.append("level", selectedLevel);
-            formData.append("grayscale", document.getElementById('toggle-gray').checked);
-            formData.append("dpi", dpiRange.value);
+            
+            // Add type-specific options
+            if (selectedFileType === 'pdf') {
+                formData.append("grayscale", document.getElementById('grayscale')?.checked || false);
+                formData.append("dpi", document.getElementById('dpi')?.value || 150);
+            }
 
             try {
-                await fetch("/compress", { method: "POST", body: formData });
+                const endpoint = `/compress-${selectedFileType}`;
+                const response = await fetch(endpoint, { method: "POST", body: formData });
+                if (!response.ok) throw new Error("Compression failed");
             } catch (err) {
-                alert("Error starting compression: " + err.message);
+                alert("Error: " + err.message);
                 location.reload();
             }
         }
+
+        // Initialize
+        showStep('select');
     </script>
 </body>
 </html>

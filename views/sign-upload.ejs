@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Editor - Upload</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+    <div class="w-full max-w-md">
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-sky-600 to-blue-600 px-8 py-12 text-center">
+                <i class="fas fa-file-pdf text-white text-4xl mb-4 block"></i>
+                <h1 class="text-3xl font-black text-white">PDF Editor</h1>
+                <p class="text-blue-100 mt-2 text-sm">Sign & Watermark Professional</p>
+            </div>
+
+            <!-- Upload Area -->
+            <div class="p-8">
+                <div id="uploadArea" class="border-3 border-dashed border-sky-300 rounded-xl p-12 text-center bg-sky-50 cursor-pointer hover:bg-sky-100 transition-all"
+                     ondrop="handleDrop(event)" ondragover="event.preventDefault()" ondragleave="document.getElementById('uploadArea').style.background='#f0f9ff'">
+                    <input type="file" id="pdfInput" class="hidden" accept=".pdf" onchange="handleFileSelect(event)">
+                    
+                    <i class="fas fa-cloud-arrow-up text-5xl text-sky-500 mb-4"></i>
+                    <h2 class="text-xl font-bold text-slate-800 mb-2">Upload PDF</h2>
+                    <p class="text-slate-600 text-sm mb-6">Drag and drop your PDF or click to browse</p>
+                    
+                    <button type="button" onclick="document.getElementById('pdfInput').click()" 
+                            class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-8 rounded-lg transition-all">
+                        <i class="fas fa-folder-open mr-2"></i>Choose File
+                    </button>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden text-center py-8">
+                    <div class="inline-block">
+                        <div class="w-12 h-12 border-4 border-sky-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p class="text-slate-600 mt-4 font-semibold">Opening editor...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="errorState" class="hidden bg-red-50 border-2 border-red-300 rounded-lg p-4 text-center">
+                    <i class="fas fa-exclamation-circle text-red-600 text-2xl mb-2"></i>
+                    <p id="errorMessage" class="text-red-700 font-semibold"></p>
+                    <button onclick="resetUpload()" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-all">
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').style.background = '#f0f9ff';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('pdfInput').files = files;
+                uploadPDF(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                uploadPDF(e.target.files[0]);
+            }
+        }
+
+        async function uploadPDF(file) {
+            if (file.type !== 'application/pdf') {
+                showError('Please select a valid PDF file');
+                return;
+            }
+
+            document.getElementById('uploadArea').classList.add('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+
+            try {
+                const formData = new FormData();
+                formData.append('pdf', file);
+
+                const response = await fetch('/upload-pdf-for-editor', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'Upload failed');
+                    return;
+                }
+
+                // Redirect to editor
+                window.location.href = `/sign-watermark-editor?pdf=${encodeURIComponent(data.path)}&name=${encodeURIComponent(file.name)}`;
+
+            } catch (err) {
+                showError(err.message);
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('uploadArea').classList.add('hidden');
+            document.getElementById('errorMessage').innerText = message;
+            document.getElementById('errorState').classList.remove('hidden');
+        }
+
+        function resetUpload() {
+            document.getElementById('uploadArea').classList.remove('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('pdfInput').value = '';
+        }
+    </script>
+</body>
+</html>

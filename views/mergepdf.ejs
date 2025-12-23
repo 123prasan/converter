@@ -22,8 +22,12 @@
         .glass-feature:hover { background: white; transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.1); }
         .shape { position: absolute; background: var(--nx-indigo); filter: blur(100px); opacity: 0.05; z-index: -1; border-radius: 50%; animation: float 25s infinite alternate; }
         @keyframes float { 0% { transform: translate(0, 0) rotate(0deg); } 100% { transform: translate(150px, 100px) rotate(15deg); } }
-        .file-item { border: 1px solid #f1f5f9; transition: all 0.2s ease; }
+        .file-item { border: 1px solid #f1f5f9; transition: all 0.2s ease; cursor: grab; }
+        .file-item:active { cursor: grabbing; }
+        .file-item.dragging { opacity: 0.5; background: #e0e7ff; transform: scale(0.95); }
         .file-item:hover { border-color: #6366f1; background: #fcfaff; }
+        .drop-hint { border: 2px dashed #6366f1; background: #f0f4ff; }
+        .size-warning { background: #fef2f2; border-left: 3px solid #dc2626; }
     </style>
 </head>
 <body class="antialiased">
@@ -95,14 +99,22 @@
                                 <span id="queue-count" class="bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-bold">0 Files</span>
                             </div>
                             
-                            <div id="file-queue" class="space-y-3 mb-8 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                            <div id="size-indicator" class="hidden bg-amber-50 border border-amber-300 p-3 rounded-xl mb-4">
+                                <p class="text-[10px] font-bold text-amber-800"><i class="fas fa-exclamation-circle mr-2"></i>Total Size: <span id="total-size">0</span> MB / 500 MB Max</p>
+                                <div class="w-full bg-amber-200 rounded-full h-2 mt-2">
+                                    <div id="size-bar" class="bg-amber-600 h-2 rounded-full" style="width: 0%"></div>
                                 </div>
+                            </div>
+                            
+                            <div id="file-queue" class="space-y-3 mb-8 max-h-64 overflow-y-auto pr-2 custom-scrollbar border border-dashed border-indigo-200 rounded-2xl p-4 bg-indigo-50">
+                                <p class="text-center text-slate-400 text-[10px] py-8">Drag to reorder files</p>
+                            </div>
 
                             <div class="grid grid-cols-2 gap-3 mb-4">
                                 <button onclick="document.getElementById('fileInput').click()" class="bg-white border border-slate-200 text-slate-600 py-4 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all">
                                     Add More
                                 </button>
-                                <button onclick="startMerge()" class="bg-indigo-600 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
+                                <button onclick="startMerge()" class="bg-indigo-600 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="mergeBtn">
                                     Merge Now
                                 </button>
                             </div>
@@ -143,6 +155,7 @@
         const socket = io();
         let socketId = "";
         let selectedFiles = [];
+        const MAX_SIZE = 500 * 1024 * 1024; // 500MB
 
         socket.on('connect', () => { socketId = socket.id; });
 
@@ -162,39 +175,106 @@
             }, 600);
         });
 
+        socket.on('conversion-error', (msg) => {
+            alert("Error: " + msg);
+            location.reload();
+        });
+
         const fileInput = document.getElementById('fileInput');
         fileInput.onchange = (e) => {
             if(e.target.files.length) {
                 const newFiles = Array.from(e.target.files);
+                const totalSize = getTotalSize() + newFiles.reduce((sum, f) => sum + f.size, 0);
+                
+                if (totalSize > MAX_SIZE) {
+                    alert(`Total size exceeds 500MB limit. Current: ${(getTotalSize() / 1024 / 1024).toFixed(2)}MB, Adding: ${(newFiles.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2)}MB`);
+                    return;
+                }
+                
                 selectedFiles = [...selectedFiles, ...newFiles];
                 updateQueueUI();
             }
         };
 
+        function getTotalSize() {
+            return selectedFiles.reduce((sum, file) => sum + file.size, 0);
+        }
+
         function updateQueueUI() {
             const queueContainer = document.getElementById('file-queue');
             const idleUI = document.getElementById('idle-ui');
             const queueUI = document.getElementById('queue-ui');
+            const totalSize = getTotalSize();
+            const totalSizeMB = totalSize / 1024 / 1024;
             
             idleUI.classList.add('hidden');
             queueUI.classList.remove('hidden');
             
             document.getElementById('queue-count').innerText = `${selectedFiles.length} Files`;
             
+            // Update size indicator
+            const sizeIndicator = document.getElementById('size-indicator');
+            const sizeBar = document.getElementById('size-bar');
+            const sizeText = document.getElementById('total-size');
+            
+            sizeText.innerText = totalSizeMB.toFixed(2);
+            const sizePercent = (totalSize / MAX_SIZE) * 100;
+            sizeBar.style.width = Math.min(sizePercent, 100) + '%';
+            
+            if (totalSize > MAX_SIZE) {
+                sizeIndicator.classList.remove('hidden');
+                sizeIndicator.classList.add('size-warning');
+                sizeIndicator.innerHTML = `<p class="text-[10px] font-bold text-red-800"><i class="fas fa-times-circle mr-2"></i>Size exceeds 500MB! Please remove files.</p>`;
+                document.getElementById('mergeBtn').disabled = true;
+            } else {
+                sizeIndicator.classList.toggle('hidden', totalSize === 0);
+                sizeIndicator.classList.remove('size-warning');
+                document.getElementById('mergeBtn').disabled = selectedFiles.length < 2;
+            }
+            
             queueContainer.innerHTML = selectedFiles.map((file, idx) => `
-                <div class="file-item p-4 rounded-2xl bg-white flex items-center justify-between group">
-                    <div class="flex items-center gap-4 overflow-hidden">
-                        <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">${idx + 1}</div>
+                <div class="file-item p-4 rounded-2xl bg-white flex items-center justify-between group" draggable="true" ondragstart="dragStart(event, ${idx})" ondragover="dragOver(event)" ondrop="drop(event, ${idx})" ondragend="dragEnd(event)">
+                    <div class="flex items-center gap-4 overflow-hidden flex-1">
+                        <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-black text-sm shrink-0 drag-handle">
+                            <i class="fas fa-grip-vertical text-xs"></i>
+                        </div>
                         <div class="overflow-hidden">
-                            <p class="font-bold text-xs text-slate-800 truncate">${file.name}</p>
+                            <p class="font-bold text-xs text-slate-800 truncate">${idx + 1}. ${file.name}</p>
                             <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${(file.size / 1024 / 1024).toFixed(2)} MB</p>
                         </div>
                     </div>
-                    <button onclick="removeFile(${idx})" class="text-slate-300 hover:text-red-500 transition px-2">
+                    <button onclick="removeFile(${idx})" class="text-slate-300 hover:text-red-500 transition px-2 ml-2">
                         <i class="fas fa-times-circle"></i>
                     </button>
                 </div>
             `).join('');
+        }
+
+        let draggedIndex = null;
+
+        function dragStart(event, index) {
+            draggedIndex = index;
+            event.target.closest('.file-item').classList.add('dragging');
+        }
+
+        function dragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+        }
+
+        function drop(event, targetIndex) {
+            event.preventDefault();
+            if (draggedIndex !== null && draggedIndex !== targetIndex) {
+                const draggedFile = selectedFiles[draggedIndex];
+                selectedFiles.splice(draggedIndex, 1);
+                selectedFiles.splice(targetIndex, 0, draggedFile);
+                draggedIndex = null;
+                updateQueueUI();
+            }
+        }
+
+        function dragEnd(event) {
+            event.target.closest('.file-item').classList.remove('dragging');
         }
 
         function removeFile(index) {
@@ -212,15 +292,23 @@
                 return;
             }
 
+            const totalSize = getTotalSize();
+            if (totalSize > MAX_SIZE) {
+                alert(`Total size (${(totalSize / 1024 / 1024).toFixed(2)}MB) exceeds 500MB limit.`);
+                return;
+            }
+
             document.getElementById('queue-ui').classList.add('hidden');
             document.getElementById('processing-ui').classList.remove('hidden');
 
             const formData = new FormData();
-            selectedFiles.forEach(file => formData.append("pdfs", file));
+            selectedFiles.forEach((file, idx) => {
+                formData.append("pdfs", file);
+                formData.append(`order_${idx}`, idx); // Send order info
+            });
             formData.append("socketId", socketId);
 
             try {
-                // Route should match your server.js (e.g., /merge-pdf)
                 const response = await fetch("/merge-pdf", { method: "POST", body: formData });
                 if (!response.ok) throw new Error("Merge process failed.");
             } catch (err) {

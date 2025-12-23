@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional PDF Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #1f2937; color: #fff; overflow: hidden; }
+        
+        .sidebar { width: 320px; background: #111827; border-right: 1px solid #374151; display: flex; flex-direction: column; }
+        .main-content { flex: 1; display: flex; flex-direction: column; }
+        .canvas-area { flex: 1; background: #374151; overflow: auto; display: flex; align-items: center; justify-content: center; position: relative; }
+        
+        #pdf-canvas { max-width: 100%; max-height: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); cursor: crosshair; }
+        
+        .tab-btn { width: 100%; padding: 12px; text-align: left; border: none; background: transparent; color: #9ca3af; cursor: pointer; font-weight: 600; border-left: 3px solid transparent; transition: all 0.3s; }
+        .tab-btn:hover { background: #1f2937; color: #fff; }
+        .tab-btn.active { background: #1f2937; color: #0ea5e9; border-left-color: #0ea5e9; }
+        
+        .control-group { background: #1f2937; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
+        .control-label { font-size: 11px; font-weight: 700; color: #9ca3af; uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+        .control-input { width: 100%; padding: 8px 12px; background: #374151; border: 1px solid #4b5563; border-radius: 6px; color: #fff; font-size: 13px; }
+        .control-input:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1); }
+        
+        .slider { width: 100%; height: 4px; border-radius: 2px; background: #4b5563; outline: none; -webkit-appearance: none; accent-color: #0ea5e9; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #0ea5e9; cursor: pointer; }
+        .slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #0ea5e9; cursor: pointer; border: none; }
+        
+        .tool-btn { width: 100%; padding: 10px; background: #374151; border: 1px solid #4b5563; border-radius: 6px; color: #fff; cursor: pointer; font-weight: 600; transition: all 0.3s; margin-bottom: 8px; }
+        .tool-btn:hover { background: #0ea5e9; border-color: #0ea5e9; }
+        .tool-btn.active { background: #0ea5e9; border-color: #0ea5e9; }
+        
+        .color-picker-grid { display: grid; grid-cols-cols: 6; gap: 6px; }
+        .color-option { width: 100%; aspect-ratio: 1; border-radius: 4px; border: 2px solid #4b5563; cursor: pointer; transition: all 0.2s; }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.active { border-color: #fff; box-shadow: 0 0 0 2px #0ea5e9; }
+        
+        .section-title { font-size: 12px; font-weight: 800; color: #0ea5e9; uppercase; letter-spacing: 1px; margin: 16px 0 8px 0; padding: 0 12px; }
+        
+        .toolbar { background: #111827; border-bottom: 1px solid #374151; padding: 8px 12px; display: flex; gap: 8px; align-items: center; }
+        .toolbar-btn { padding: 8px 12px; background: #374151; border: 1px solid #4b5563; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; transition: all 0.3s; }
+        .toolbar-btn:hover { background: #0ea5e9; border-color: #0ea5e9; }
+        
+        .pages-nav { padding: 12px; border-top: 1px solid #374151; max-height: 120px; overflow-y: auto; }
+        .page-thumb { width: 100%; height: 80px; background: #374151; border: 2px solid #4b5563; border-radius: 4px; cursor: pointer; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+        .page-thumb:hover { border-color: #0ea5e9; }
+        .page-thumb.active { border-color: #0ea5e9; background: rgba(14, 165, 233, 0.1); }
+        
+        .hidden { display: none; }
+        .grid-cols-cols { grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)); }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div style="display: flex; height: 100vh;">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <!-- Header -->
+            <div style="padding: 12px; border-bottom: 1px solid #374151;">
+                <h2 style="font-size: 14px; font-weight: 800; margin: 0; color: #0ea5e9;">PDF Editor Pro</h2>
+                <p id="filename-display" style="font-size: 11px; color: #9ca3af; margin: 4px 0 0 0;">Untitled.pdf</p>
+            </div>
+
+            <!-- Tabs -->
+            <div style="display: flex; border-bottom: 1px solid #374151;">
+                <button class="tab-btn active" id="tab-signature" onclick="switchTab('signature')" style="flex: 1;">
+                    <i class="fas fa-pen-fancy"></i> Signature
+                </button>
+                <button class="tab-btn" id="tab-watermark" onclick="switchTab('watermark')" style="flex: 1;">
+                    <i class="fas fa-water"></i> Watermark
+                </button>
+            </div>
+
+            <!-- Content Area (Scrollable) -->
+            <div style="flex: 1; overflow-y: auto; padding: 12px;">
+
+                <!-- SIGNATURE TAB -->
+                <div id="signature-panel">
+                    <div class="section-title">Signature Creation</div>
+
+                    <!-- Type Signature -->
+                    <div class="control-group">
+                        <label class="control-label">Type Signature</label>
+                        <input type="text" id="sig-name" placeholder="Your name" class="control-input">
+                    </div>
+
+                    <!-- Draw Signature -->
+                    <button class="tool-btn" id="draw-sig-btn" onclick="activateTool('draw-signature')">
+                        <i class="fas fa-pen"></i> Draw Signature
+                    </button>
+
+                    <!-- Upload Signature Image -->
+                    <button class="tool-btn" onclick="document.getElementById('sig-upload').click()">
+                        <i class="fas fa-image"></i> Upload Image
+                    </button>
+                    <input type="file" id="sig-upload" class="hidden" accept="image/*">
+
+                    <!-- Save Signature -->
+                    <button class="tool-btn" onclick="saveSignature()">
+                        <i class="fas fa-save"></i> Save for Later
+                    </button>
+
+                    <div class="section-title">Appearance</div>
+
+                    <!-- Font Style -->
+                    <div class="control-group">
+                        <label class="control-label">Font Style</label>
+                        <select id="sig-font" class="control-input" onchange="updatePreview()">
+                            <option value="dancing">Dancing Script</option>
+                            <option value="modern">Modern Bold</option>
+                            <option value="classic">Classic Italic</option>
+                            <option value="formal">Formal</option>
+                        </select>
+                    </div>
+
+                    <!-- Signature Color -->
+                    <div class="control-group">
+                        <label class="control-label">Ink Color</label>
+                        <input type="color" id="sig-color" value="#000000" class="control-input" style="height: 40px; cursor: pointer;" oninput="updatePreview()">
+                    </div>
+
+                    <!-- Size -->
+                    <div class="control-group">
+                        <label class="control-label">Size: <span id="size-val">32</span>px</label>
+                        <input type="range" id="sig-size" class="slider" min="16" max="120" value="32" oninput="updatePreview()">
+                    </div>
+
+                    <!-- Opacity -->
+                    <div class="control-group">
+                        <label class="control-label">Opacity: <span id="opacity-val">100</span>%</label>
+                        <input type="range" id="sig-opacity" class="slider" min="0" max="100" value="100" oninput="updatePreview()">
+                    </div>
+
+                    <!-- Stroke Width (for drawing) -->
+                    <div class="control-group">
+                        <label class="control-label">Stroke: <span id="stroke-val">2</span>px</label>
+                        <input type="range" id="sig-stroke" class="slider" min="1" max="10" value="2" oninput="updatePreview()">
+                    </div>
+
+                    <div class="section-title">Metadata</div>
+
+                    <!-- Signer Info -->
+                    <div class="control-group">
+                        <label class="control-label">Signer Name</label>
+                        <input type="text" id="signer-name" placeholder="Full name" class="control-input">
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Reason</label>
+                        <input type="text" id="sign-reason" placeholder="e.g., Document approval" class="control-input">
+                    </div>
+
+                    <!-- Auto-date -->
+                    <div class="control-group" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="include-date" checked style="width: 16px; height: 16px; cursor: pointer;">
+                        <label style="margin: 0; cursor: pointer; flex: 1;">Include date & time</label>
+                    </div>
+
+                    <div class="section-title">Placement</div>
+
+                    <!-- Page Range -->
+                    <div class="control-group">
+                        <label class="control-label">Page Range</label>
+                        <input type="text" id="sig-pages" placeholder="all or 1,3,5 or 1-5" class="control-input" value="all">
+                    </div>
+
+                    <!-- Placement Options -->
+                    <button class="tool-btn" onclick="setPlacement('center')"><i class="fas fa-circle"></i> Center</button>
+                    <button class="tool-btn" onclick="setPlacement('bottom-right')"><i class="fas fa-arrow-down-right"></i> Bottom Right</button>
+                    <button class="tool-btn" onclick="setPlacement('top-right')"><i class="fas fa-arrow-up-right"></i> Top Right</button>
+
+                    <!-- Lock Document -->
+                    <div class="control-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px;">
+                        <input type="checkbox" id="lock-document" style="width: 16px; height: 16px; cursor: pointer;">
+                        <label style="margin: 0; cursor: pointer; flex: 1;">🔒 Lock document after signing</label>
+                    </div>
+
+                    <button class="tool-btn" style="background: #0ea5e9; border-color: #0ea5e9; margin-top: 16px; font-weight: 800;" onclick="applySig()">
+                        <i class="fas fa-check"></i> APPLY SIGNATURE
+                    </button>
+                </div>
+
+                <!-- WATERMARK TAB -->
+                <div id="watermark-panel" class="hidden">
+                    <div class="section-title">Watermark Type</div>
+
+                    <button class="tool-btn active" id="water-text-btn" onclick="selectWatermarkType('text')">
+                        <i class="fas fa-text-width"></i> Text Watermark
+                    </button>
+                    <button class="tool-btn" id="water-image-btn" onclick="selectWatermarkType('image')">
+                        <i class="fas fa-image"></i> Image Watermark
+                    </button>
+
+                    <!-- TEXT WATERMARK -->
+                    <div id="text-water-panel">
+                        <div class="section-title">Text Content</div>
+
+                        <div class="control-group">
+                            <label class="control-label">Watermark Text</label>
+                            <input type="text" id="water-text" placeholder="CONFIDENTIAL" class="control-input" oninput="updatePreview()">
+                        </div>
+
+                        <div class="section-title">Formatting</div>
+
+                        <!-- Font -->
+                        <div class="control-group">
+                            <label class="control-label">Font Family</label>
+                            <select id="water-font" class="control-input" onchange="updatePreview()">
+                                <option>Arial</option>
+                                <option>Times New Roman</option>
+                                <option>Georgia</option>
+                                <option>Courier</option>
+                                <option>Verdana</option>
+                            </select>
+                        </div>
+
+                        <!-- Size -->
+                        <div class="control-group">
+                            <label class="control-label">Font Size: <span id="water-size-val">48</span>px</label>
+                            <input type="range" id="water-font-size" class="slider" min="12" max="200" value="48" oninput="updatePreview()">
+                        </div>
+
+                        <!-- Bold/Italic -->
+                        <div class="control-group" style="display: flex; gap: 8px;">
+                            <button class="tool-btn" style="flex: 1; padding: 8px; margin: 0;" id="water-bold" onclick="toggleWaterStyle('bold')">
+                                <i class="fas fa-bold"></i> Bold
+                            </button>
+                            <button class="tool-btn" style="flex: 1; padding: 8px; margin: 0;" id="water-italic" onclick="toggleWaterStyle('italic')">
+                                <i class="fas fa-italic"></i> Italic
+                            </button>
+                        </div>
+
+                        <!-- Color -->
+                        <div class="control-group">
+                            <label class="control-label">Color</label>
+                            <input type="color" id="water-color" value="#cccccc" class="control-input" style="height: 40px; cursor: pointer;" oninput="updatePreview()">
+                        </div>
+                    </div>
+
+                    <!-- IMAGE WATERMARK (Hidden by default) -->
+                    <div id="image-water-panel" class="hidden">
+                        <div class="section-title">Image Upload</div>
+
+                        <button class="tool-btn" onclick="document.getElementById('water-image-upload').click()">
+                            <i class="fas fa-upload"></i> Upload Image
+                        </button>
+                        <input type="file" id="water-image-upload" class="hidden" accept="image/*">
+
+                        <div class="control-group" style="margin-top: 12px;">
+                            <label class="control-label">Image Size: <span id="water-img-size-val">30</span>%</label>
+                            <input type="range" id="water-img-size" class="slider" min="5" max="100" value="30" oninput="updatePreview()">
+                        </div>
+                    </div>
+
+                    <div class="section-title">Appearance</div>
+
+                    <!-- Opacity -->
+                    <div class="control-group">
+                        <label class="control-label">Opacity: <span id="water-opacity-val">50</span>%</label>
+                        <input type="range" id="water-opacity" class="slider" min="0" max="100" value="50" oninput="updatePreview()">
+                    </div>
+
+                    <!-- Rotation -->
+                    <div class="control-group">
+                        <label class="control-label">Rotation: <span id="water-rotate-val">0</span>°</label>
+                        <input type="range" id="water-rotate" class="slider" min="-90" max="90" value="0" oninput="updatePreview()">
+                    </div>
+
+                    <div class="section-title">Placement</div>
+
+                    <!-- Position -->
+                    <div class="control-group">
+                        <label class="control-label">Position</label>
+                        <select id="water-position" class="control-input" onchange="updatePreview()">
+                            <option value="center">Center</option>
+                            <option value="top">Top</option>
+                            <option value="bottom">Bottom</option>
+                            <option value="top-left">Top Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="bottom-right">Bottom Right</option>
+                        </select>
+                    </div>
+
+                    <!-- Tiling -->
+                    <div class="control-group" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="water-tile" style="width: 16px; height: 16px; cursor: pointer;">
+                        <label style="margin: 0; cursor: pointer; flex: 1;">Tile across page</label>
+                    </div>
+
+                    <!-- Layer -->
+                    <div class="control-group">
+                        <label class="control-label">Layer</label>
+                        <select id="water-layer" class="control-input">
+                            <option value="behind">Behind content</option>
+                            <option value="above">Above content</option>
+                        </select>
+                    </div>
+
+                    <!-- Page Range -->
+                    <div class="control-group">
+                        <label class="control-label">Apply to Pages</label>
+                        <input type="text" id="water-pages" placeholder="all or 1,3,5 or 1-5" class="control-input" value="all">
+                    </div>
+
+                    <button class="tool-btn" style="background: #0ea5e9; border-color: #0ea5e9; margin-top: 16px; font-weight: 800;" onclick="applyWater()">
+                        <i class="fas fa-check"></i> APPLY WATERMARK
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Page Navigation -->
+            <div class="pages-nav">
+                <div class="control-label">Pages</div>
+                <div id="pages-container"></div>
+            </div>
+        </div>
+
+        <!-- MAIN EDITOR -->
+        <div class="main-content">
+            <!-- Top Toolbar -->
+            <div class="toolbar">
+                <button class="toolbar-btn" onclick="zoomIn()"><i class="fas fa-search-plus"></i> Zoom In</button>
+                <button class="toolbar-btn" onclick="zoomOut()"><i class="fas fa-search-minus"></i> Zoom Out</button>
+                <button class="toolbar-btn" onclick="fitPage()"><i class="fas fa-expand"></i> Fit</button>
+                <div style="flex: 1;"></div>
+                <span id="zoom-level" style="font-size: 12px; color: #9ca3af;">100%</span>
+                <span id="page-counter" style="font-size: 12px; color: #9ca3af; margin-left: 16px;">Page 1</span>
+            </div>
+
+            <!-- Canvas -->
+            <div class="canvas-area">
+                <canvas id="pdf-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Elements -->
+    <input type="hidden" id="pdf-data">
+    <input type="hidden" id="current-page" value="1">
+    <input type="hidden" id="zoom" value="100">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let pdfDoc = null, currentPage = 1, zoom = 1.5;
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Get PDF from query params
+        const params = new URLSearchParams(window.location.search);
+        const rawPdf = params.get('pdf');
+        const fileName = params.get('filename') || 'document.pdf';
+
+        document.getElementById('filename-display').innerText = fileName;
+
+        // Normalize PDF path so PDF.js can fetch over HTTP
+        let pdfPath = null;
+        if (rawPdf) {
+            try {
+                // If user passed a file:// URL, convert to /uploads/<basename>
+                const parsed = new URL(rawPdf);
+                if (parsed.protocol === 'file:') {
+                    const fname = decodeURIComponent(parsed.pathname.split('/').pop());
+                    pdfPath = `/uploads/${fname}`;
+                } else {
+                    pdfPath = rawPdf; // assume http(s) or already web path
+                }
+            } catch (err) {
+                // Not a valid URL string - could be an absolute path or a web path
+                // Windows absolute paths or bare file paths -> convert to /uploads/<basename>
+                if (/^[a-zA-Z]:\\\\|^[a-zA-Z]:\\/.test(rawPdf) || rawPdf.indexOf('\\') !== -1) {
+                    const fname = rawPdf.split(/[\\\\/]/).pop();
+                    pdfPath = `/uploads/${fname}`;
+                } else if (rawPdf.startsWith('/uploads/') || rawPdf.startsWith('/')) {
+                    pdfPath = rawPdf;
+                } else {
+                    // fallback: treat as relative or web path
+                    pdfPath = rawPdf;
+                }
+            }
+        }
+
+        // Load PDF (if normalized to web path)
+        if (pdfPath) {
+            pdfjsLib.getDocument(pdfPath).promise.then(pdf => {
+                pdfDoc = pdf;
+                renderThumbnails();
+                renderPage(1);
+            }).catch(err => {
+                console.error('PDF load error:', err);
+                alert('Unable to load PDF. Please re-upload the file from the Sign page.');
+                window.location.href = '/sign-upload';
+            });
+        } else {
+            // No PDF specified, go back to upload
+            window.location.href = '/sign-upload';
+        }
+
+        function renderPage(num) {
+            if (!pdfDoc) return;
+            currentPage = num;
+            document.getElementById('current-page').value = num;
+            document.getElementById('page-counter').innerText = `Page ${num} of ${pdfDoc.numPages}`;
+
+            pdfDoc.getPage(num).then(page => {
+                const viewport = page.getViewport({ scale: zoom });
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                page.render({ canvasContext: ctx, viewport: viewport }).promise.then(() => {
+                    // Draw preview if needed
+                    drawPreview();
+                });
+            });
+        }
+
+        function renderThumbnails() {
+            const container = document.getElementById('pages-container');
+            container.innerHTML = '';
+            for (let i = 1; i <= Math.min(pdfDoc.numPages, 10); i++) {
+                const thumb = document.createElement('div');
+                thumb.className = `page-thumb ${i === 1 ? 'active' : ''}`;
+                thumb.innerText = `Page ${i}`;
+                thumb.onclick = () => {
+                    document.querySelectorAll('.page-thumb').forEach(t => t.classList.remove('active'));
+                    thumb.classList.add('active');
+                    renderPage(i);
+                };
+                container.appendChild(thumb);
+            }
+        }
+
+        function zoomIn() {
+            zoom = Math.min(zoom + 0.2, 3);
+            document.getElementById('zoom-level').innerText = Math.round(zoom * 100 / 1.5) + '%';
+            renderPage(currentPage);
+        }
+
+        function zoomOut() {
+            zoom = Math.max(zoom - 0.2, 0.5);
+            document.getElementById('zoom-level').innerText = Math.round(zoom * 100 / 1.5) + '%';
+            renderPage(currentPage);
+        }
+
+        function fitPage() {
+            zoom = 1.5;
+            document.getElementById('zoom-level').innerText = '100%';
+            renderPage(currentPage);
+        }
+
+        function switchTab(tab) {
+            document.getElementById('signature-panel').classList.toggle('hidden', tab !== 'signature');
+            document.getElementById('watermark-panel').classList.toggle('hidden', tab !== 'watermark');
+            document.getElementById('tab-signature').classList.toggle('active', tab === 'signature');
+            document.getElementById('tab-watermark').classList.toggle('active', tab === 'watermark');
+        }
+
+        function selectWatermarkType(type) {
+            document.getElementById('text-water-panel').classList.toggle('hidden', type !== 'text');
+            document.getElementById('image-water-panel').classList.toggle('hidden', type !== 'image');
+            document.getElementById('water-text-btn').classList.toggle('active', type === 'text');
+            document.getElementById('water-image-btn').classList.toggle('active', type === 'image');
+        }
+
+        function updatePreview() {
+            drawPreview();
+        }
+
+        function drawPreview() {
+            // This will show signature/watermark preview on canvas
+            // Implementation depends on current tool
+        }
+
+        function activateTool(tool) {
+            console.log('Tool activated:', tool);
+        }
+
+        function applySig() {
+            alert('Signature applied! (Processing...)');
+        }
+
+        function applyWater() {
+            alert('Watermark applied! (Processing...)');
+        }
+
+        function saveSignature() {
+            alert('Signature saved for later use!');
+        }
+
+        function setPlacement(placement) {
+            console.log('Placement set to:', placement);
+        }
+
+        function toggleWaterStyle(style) {
+            const btn = document.getElementById(`water-${style}`);
+            btn.classList.toggle('active');
+        }
+
+        // Update slider value displays
+        document.getElementById('sig-size').addEventListener('input', (e) => {
+            document.getElementById('size-val').innerText = e.target.value;
+            updatePreview();
+        });
+        document.getElementById('sig-opacity').addEventListener('input', (e) => {
+            document.getElementById('opacity-val').innerText = e.target.value;
+            updatePreview();
+        });
+        document.getElementById('sig-stroke').addEventListener('input', (e) => {
+            document.getElementById('stroke-val').innerText = e.target.value;
+            updatePreview();
+        });
+        document.getElementById('water-font-size').addEventListener('input', (e) => {
+            document.getElementById('water-size-val').innerText = e.target.value;
+            updatePreview();
+        });
+        document.getElementById('water-opacity').addEventListener('input', (e) => {
+            document.getElementById('water-opacity-val').innerText = e.target.value;
+            updatePreview();
+        });
+        document.getElementById('water-rotate').addEventListener('input', (e) => {
+            document.getElementById('water-rotate-val').innerText = e.target.value;
+            updatePreview();
+        });
+        document.getElementById('water-img-size').addEventListener('input', (e) => {
+            document.getElementById('water-img-size-val').innerText = e.target.value;
+            updatePreview();
+        });
+    </script>
+</body>
+</html>

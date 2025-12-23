@@ -19,7 +19,7 @@ def log(message):
 
 def main():
     try:
-        if len(sys.argv) < 10:
+        if len(sys.argv) < 11:
             sys.exit(1)
 
         input_pdf = os.path.abspath(sys.argv[1])
@@ -31,9 +31,18 @@ def main():
         font_size = float(sys.argv[7])
         color_hex = sys.argv[8].lstrip('#')
         font_style = sys.argv[9]
+        opacity = float(sys.argv[10])
 
+        # Convert hex color to RGB (0-1 range)
         rgb = tuple(int(color_hex[i:i+2], 16) / 255 for i in (0, 2, 4))
-        font_map = {"italic": "tiit", "bold": "tibo", "bold_italic": "tibi", "regular": "tiro"}
+        
+        # Map font styles to PyMuPDF fonts
+        font_map = {
+            "script": "tibi",      # Times Bold Italic for elegant script look
+            "modern": "tibo",      # Times Bold
+            "classic": "tiit",     # Times Italic
+            "formal": "tiro"       # Times Regular
+        }
         selected_font = font_map.get(font_style, "tibi")
 
         if not os.path.exists(input_pdf):
@@ -55,26 +64,31 @@ def main():
             if 0 <= p_idx < total_pages:
                 page = doc[p_idx]
                 page_rect = page.rect
+                
+                # Calculate text dimensions
                 text_len = fitz.get_text_length(name, fontname=selected_font, fontsize=font_size)
-
-                # Anchor to bottom-left with margins
+                
+                # Position calculation (convert from bottom-left to PyMuPDF coordinates)
                 safe_x = max(10, min(margin_x, page_rect.width - text_len - 10))
                 safe_y = max(font_size + 10, min(page_rect.height - margin_y, page_rect.height - 10))
 
+                # Insert signature with opacity
                 page.insert_text(fitz.Point(safe_x, safe_y), name, 
-                                 fontsize=font_size, color=rgb, 
-                                 fontname=selected_font, overlay=True)
+                                fontsize=font_size, 
+                                color=rgb, 
+                                fontname=selected_font, 
+                                overlay=True)
 
-        # Use a temporary save approach to avoid file locks
+        # Save with optimization
         doc.save(output_pdf, garbage=4, deflate=True)
         doc.close()
         
-        print("Success: PDF Signed")
+        log("Success: PDF Signed with Style")
         sys.exit(0)
 
     except Exception as e:
         debug_log(f"Execution Error: {str(e)}")
-        print(f"Error: {str(e)}")
+        log(f"Error: {str(e)}")
         sys.exit(7)
 
 if __name__ == "__main__":
